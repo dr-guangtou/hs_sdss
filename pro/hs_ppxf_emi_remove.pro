@@ -1,8 +1,25 @@
-;; + 
-;; hs_ppxf_emi_remove 
-;; V0.11 SH 06/01/2014
+; + 
+; NAME:
+;              HS_PPXF_EMI_REMOVE
+;
+; PURPOSE:
+;              Remove the emission line from the spectrum using pPXF fitting 
+;
+; USAGE:
+;    hs_ppxf_emi_remove, spec_file 
+;
+; OUTPUT: 
+;
+; AUTHOR:
+;             Song Huang
+;
+; HISTORY:
+;             Song Huang, 2014/06/05 - First version 
+;
+;-
+; CATEGORY:    HS_SDSS
+;------------------------------------------------------------------------------
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 pro hs_ppxf_emi_full, spec_file, location=location  
 
@@ -81,133 +98,40 @@ pro hs_ppxf_emi_full, spec_file, location=location
 
 end 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-pro hs_ppxf_emi_remove, spec_file, location=location  
+pro make_compare_plot, fits_file, plot_name=plot_name, hvdisp_home=hvdisp_home 
 
-    ;; Location for the spectra
-    if keyword_set( location ) then begin 
-        location = strcompress( location, /remove_all ) 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    if NOT keyword_set( hvdisp_home ) then begin 
+        hvdisp_location, hvdisp_home, data_home
     endif else begin 
-        location = '/home/hs/Desktop/stack/spec/' 
+        hvdisp_home = strcompress( hvdisp_home, /remove_all ) 
     endelse
-
-    ;; Read in the spectrum
-    spec_file = strcompress( spec_file, /remove_all ) 
-    if ( NOT file_test( location + spec_file ) ) then begin 
-        message, ' Check the spectrum file: ' + spec_file + ' !!'
-    endif 
-    ;; String for the name of the spectrum
-    temp = strsplit( spec_file, '.', /extract )  
-    name_str = strcompress( temp[0], /remove_all )
-    ;; 
-    spec_read = location + spec_file
-    ;; WAVE, FLUX, N_PIXEL 
-    readcol, spec_read, wave, flux, error, flag, format='F,D,D,I', $
-        comment='#', delimiter=' ', /silent
-    n_pixel = n_elements( wave )
-
-    ;; The list of stellar templates
-    ;temp_files = [ 'mius_un08.lis', 'mius_un18.lis' ]
-    temp_files = [ 'mius_un08.lis', 'mius_ku13.lis', 'mius_un13.lis', $
-                   'mius_un18.lis', 'mius_un20.lis', 'mius_unmix.lis' ]
-    n_temp = n_elements( temp_files ) 
-    ;; Three files for each template 
-    n_file = ( n_temp * 3 )
-    ;; Array for the emission line subtracted spectra 
-    sub_arr = dblarr( n_pixel, n_temp ) 
-    res_arr = dblarr( n_pixel, n_temp ) 
-    emi_arr = dblarr( n_pixel, n_temp ) 
-
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    for ii = 0, ( n_temp - 1 ), 1 do begin 
-
-        temp_list = strcompress( temp_files[ii], /remove_all ) 
-        temp = strsplit( temp_list, '._', /extract ) 
-        ;; Index for the IMF choice
-        imf_index = temp[1] 
-
-        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        ;; First part: 3900:4520 
-        ;; H_delta & H_gamma
-        hs_ppxf_emi_fitting, spec_file, temp_list, location=location, $
-            min_wave=3900.0, max_wave=4520.0, /spec_txt, /save_result, $
-            prefix=imf_index + '_1', /debug
-        result_1 = name_str + '_' + imf_index + '_1_ppxf.fits'
-        if NOT file_test( result_1 ) then begin 
-            message, ' Can not find : ' + result_1 + ' !!!!'
-        endif 
-        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        ;; Second part: 4650:5120 
-        ;; H_beta, [OIII] 4959, 5007
-        hs_ppxf_emi_fitting, spec_file, temp_list, location=location, $
-            min_wave=4650.0, max_wave=5120.0, /spec_txt, /save_result, $
-            prefix=imf_index + '_2', /debug
-        result_2 = name_str + '_' + imf_index + '_2_ppxf.fits'
-        if NOT file_test( result_2 ) then begin 
-            message, ' Can not find : ' + result_2 + ' !!!!'
-        endif 
-        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        ;; Third part: 6100:7000 
-        ;; [OI] 6300; H_alpha, [NII], and [SII]
-        hs_ppxf_emi_fitting, spec_file, temp_list, location=location, $
-            min_wave=6100.0, max_wave=7000.0, /spec_txt, /save_result, $
-            prefix=imf_index + '_3', /debug
-        result_3 = name_str + '_' + imf_index + '_3_ppxf.fits'
-        if NOT file_test( result_3 ) then begin 
-            message, ' Can not find : ' + result_3 + ' !!!!'
-        endif 
-        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        ;; Get the emission line subtraction file 
-        hs_ppxf_emi_subtract, name_str, imf_index, $
-            flux_sub, flux_res, location=location 
-        ;;
-        sub_arr[ *, ii ] = flux_sub
-        res_arr[ *, ii ] = flux_res
-
-    endfor
-
+    loc_coadd = hvdisp_home + 'coadd/'
+    loc_lis   = hvdisp_home + 'pro/lis/'
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    fits_temp  = name_str + '_ppxf_emirem.fits'
-    struc_temp = { wave:wave, flux:flux, sub_arr:sub_arr, res_arr:res_arr }
-    mwrfits, struc_temp, fits_temp, /create 
-    ;; Make the comparison plot
-    make_compare_plot, fits_temp
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-end 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-pro make_compare_plot, fits_file, plot_name=plot_name 
-
     ;; Read in the file 
     if file_test( fits_file ) then begin 
         fits_file = strcompress( fits_file, /remove_all ) 
         struc_temp = mrdfits( fits_file, 1 ) 
-        temp = strsplit( fits_file, '.', /extract )
+        temp = strsplit( fits_file, '/', /extract )
+        fits_name = temp[ n_elements( temp ) - 1 ]
+        ;; 
+        temp = strsplit( fits_name, '.', /extract )
         name_str = temp[0]
     endif else begin 
         message, ' Can not find the file : ' + fits_file + ' !!!'
     endelse
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Usefule data
-    wave = struc_temp.wave 
-    flux = struc_temp.flux 
+    wave    = struc_temp.wave 
+    flux    = struc_temp.flux 
     sub_arr = struc_temp.sub_arr 
     res_arr = struc_temp.res_arr 
-    ;;
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     size_arr = size( sub_arr, /dim ) 
     n_pix  = ( size( sub_arr, /dim ) )[0]
     if ( n_elements( size_arr ) EQ 1 ) then begin 
@@ -220,10 +144,11 @@ pro make_compare_plot, fits_file, plot_name=plot_name
     for kk = 0, ( n_temp - 1 ), 1 do begin 
         emi_arr[ *, kk ] = ( flux - sub_arr[ *, kk ] ) 
     endfor 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Index list 
-    index_list = 'hs_index_emi.lis' 
+    index_list = loc_lis + 'hs_index_emi.lis' 
     ;; Make a figure to compare the results
     if NOT keyword_set( plot_name ) then begin 
         compare_plot = name_str + '.eps' 
@@ -231,8 +156,7 @@ pro make_compare_plot, fits_file, plot_name=plot_name
         compare_plot = strcompress( plot_name, /remove_all ) 
     endelse
     ;; Color list 
-    ;color_list = [ 'BLU6', 'BLU3', 'Orange', 'RED4', 'RED7' ] 
-    color_file = 'hs_color.txt'
+    color_file = loc_lis + 'hs_color.txt'
     color_list = [ 'HS1', 'HS2', 'HS3', 'HS4', 'HS5', 'HS6' ]
     ;; 
     mydevice = !d.name 
@@ -448,8 +372,8 @@ end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-pro hs_ppxf_emi_subtract, name_str, imf_index, flux_sub, flux_res, $
-    location=location 
+pro hs_ppxf_emi_subtract, spec_loc, name_str, imf_index, flux_sub, flux_res, $
+    hvdisp_home=hvdisp_home
 
     ;; Location
     if keyword_set( location ) then begin 
@@ -1249,7 +1173,135 @@ end
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-pro ppxf_test 
+pro hs_ppxf_emi_remove, spec_file, hvdisp_home=hvdisp_home 
+
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    if NOT keyword_set( hvdisp_home ) then begin 
+        hvdisp_location, hvdisp_home, data_home
+    endif else begin 
+        hvdisp_home = strcompress( hvdisp_home, /remove_all ) 
+    endelse
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    loc_coadd   = hvdisp_home + 'coadd/'
+    loc_templis = hvdisp_home + 'pro/lis/'
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Location for the spectra
+    ;; Read in the spectrum
+    spec_file = strcompress( spec_file, /remove_all ) 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    if ( NOT file_test( spec_file ) ) then begin 
+        message, ' Check the spectrum file: ' + spec_file + ' !!'
+    endif 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; String for the name of the spectrum
+    ;; SPEC_NAME ; SPEC_LOC ; NAME_STR
+    temp = strsplit( spec_file, '/', /extract )  
+    nseg = n_elements( temp ) 
+    spec_name = temp[ nseg - 1 ]
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    if ( nseg EQ 1 ) then begin 
+        spec_loc = ''
+    endif else begin 
+        spec_loc = '/'
+        for nn = 0, ( nseg - 2 ), 1 do begin 
+            spec_loc = spec_loc + temp[ nn ] + '/' 
+        endfor 
+    endelse
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    temp = strsplit( spec_name, '.', /extract ) 
+    name_str = strcompress( temp[0], /remove_all )
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; WAVE, FLUX, N_PIXEL 
+    readcol, spec_file, wave, flux, error, flag, format='F,D,D,I', $
+        comment='#', delimiter=' ', /silent
+    n_pixel = n_elements( wave )
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; The list of stellar templates
+    temp_files = [ 'mius_un08.lis', 'mius_un18.lis' ]
+    ;temp_files = [ 'mius_un08.lis', 'mius_ku13.lis', 'mius_un13.lis', $
+    ;              'mius_un18.lis', 'mius_un20.lis', 'mius_unmix.lis' ]
+    n_temp = n_elements( temp_files ) 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Three files for each template 
+    n_file = ( n_temp * 3 )
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Array for the emission line subtracted spectra 
+    sub_arr = dblarr( n_pixel, n_temp ) 
+    res_arr = dblarr( n_pixel, n_temp ) 
+    emi_arr = dblarr( n_pixel, n_temp ) 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    for ii = 0, ( n_temp - 1 ), 1 do begin 
+
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        temp_list = strcompress( temp_files[ii], /remove_all ) 
+        temp      = strsplit( temp_list, '._', /extract ) 
+        ;; Index for the IMF choice
+        imf_index = temp[1] 
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        ;; First part: 3900:4520 
+        ;; H_delta & H_gamma
+        hs_ppxf_emi_fitting, spec_file, temp_list, hvdisp_home=hvdisp_home, $
+            min_wave=3900.0, max_wave=4520.0, /spec_txt, /save_result, $
+            prefix=imf_index + '_1', /debug
+        result_1 = spec_loc + name_str + '_' + imf_index + '_1_ppxf.fits'
+        if NOT file_test( result_1 ) then begin 
+            message, ' Can not find : ' + result_1 + ' !!!!'
+        endif 
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        ;; Second part: 4650:5120 
+        ;; H_beta, [OIII] 4959, 5007
+        hs_ppxf_emi_fitting, spec_file, temp_list, hvdisp_home=hvdisp_home, $
+            min_wave=4650.0, max_wave=5120.0, /spec_txt, /save_result, $
+            prefix=imf_index + '_2', /debug
+        result_2 = spec_loc + name_str + '_' + imf_index + '_2_ppxf.fits'
+        if NOT file_test( result_2 ) then begin 
+            message, ' Can not find : ' + result_2 + ' !!!!'
+        endif 
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        ;; Third part: 6100:7000 
+        ;; [OI] 6300; H_alpha, [NII], and [SII]
+        hs_ppxf_emi_fitting, spec_file, temp_list, hvdisp_home=hvdisp_home, $
+            min_wave=6100.0, max_wave=7000.0, /spec_txt, /save_result, $
+            prefix=imf_index + '_3', /debug
+        result_3 = spec_loc + name_str + '_' + imf_index + '_3_ppxf.fits'
+        if NOT file_test( result_3 ) then begin 
+            message, ' Can not find : ' + result_3 + ' !!!!'
+        endif 
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        ;; Get the emission line subtraction file 
+        hs_ppxf_emi_subtract, spec_loc, name_str, imf_index, $
+            flux_sub, flux_res, hvdisp_home=hvdisp_home 
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        sub_arr[ *, ii ] = flux_sub
+        res_arr[ *, ii ] = flux_res
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+    endfor
+
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    fits_temp  = spec_loc + name_str + '_ppxf_emirem.fits'
+    struc_temp = { wave:wave, flux:flux, sub_arr:sub_arr, res_arr:res_arr }
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    mwrfits, struc_temp, fits_temp, /create 
+    ;; Make the comparison plot
+    make_compare_plot, fits_temp, hvdisp_home=hvdisp_home
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+end 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+pro ppxf_emi_remove_test
 
     location = '/home/hs/Desktop/stack/spec/'
 
@@ -1282,4 +1334,3 @@ pro ppxf_test
         ;min_wave=3920.0, max_wave=7350.0, $
 end 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-

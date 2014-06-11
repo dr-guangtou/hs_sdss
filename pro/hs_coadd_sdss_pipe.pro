@@ -15,24 +15,59 @@
 ;
 ; HISTORY:
 ;             Song Huang, 2014/06/05 - First version 
+;             Song Huang, 2014/06/10 - Add the option to use average of all 
+;                                      bootstrap runs as the array for median 
+;                                      combined spectrum
 ;-
 ; CATEGORY:    HS_HVDISP
 ;------------------------------------------------------------------------------
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 pro hs_coadd_sdss_pipe, html_list, hvdisp_home=hvdisp_home, $
-    create=create, post=post
+    create=create, post=post, avg_boot=avg_boot, $
+    csigma=csigma, n_boot=n_boot, sig_cut=sig_cut, $
+    blue_cut=blue_cut, red_cut=red_cut, niter=niter, nevec=nevec, $ 
+    test_str=test_str
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; Parameters 
-    csigma = 350.0
+    ;; Parameters   
+    if keyword_set( csigma ) then begin 
+        csigma = float( csigma ) 
+    endif else begin 
+        csigma = 350.0
+    endelse
     ;; For Bootstrap run
-    n_boot = 5 
+    if keyword_set( n_boot ) then begin 
+        n_boot = long( n_boot ) 
+    endif else begin 
+        n_boot  = 2000
+    endelse
+    if keyword_set( sig_cut ) then begin 
+        sig_cut = float( sig_cut ) 
+    endif else begin 
+        sig_cut = 3.5
+    endelse
     ;; For VWPCA run
-    blue_cut = 50.0 
-    red_cut  = 150.0 
-    niter    = 5 
-    nevec    = 6
+    if keyword_set( blue_cut ) then begin 
+        blue_cut = float( blue_cut ) 
+    endif else begin 
+        blue_cut = 50.0 
+    endelse
+    if keyword_set( red_cut ) then begin 
+        red_cut = float( red_cut ) 
+    endif else begin 
+        red_cut  = 150.0 
+    endelse
+    if keyword_set( niter ) then begin 
+        niter = long( niter ) 
+    endif else begin 
+        niter    = 5 
+    endelse
+    if keyword_set( nevec ) then begin 
+        nevec = long( nevec ) 
+    endif else begin 
+        nevec    = 6
+    endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -108,15 +143,28 @@ pro hs_coadd_sdss_pipe, html_list, hvdisp_home=hvdisp_home, $
         print, '   Co-add the spectra using Robust-PCA method !!'
         print, '###########################################################'
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        robust_output = loc_input + prefix + '_robust.fits'
-        robust_prefix = loc_input + prefix + '_robust'
+        if keyword_set( test_str ) then begin 
+            test_str = strcompress( test_str, /remove_all ) 
+            new_prefix = prefix + '_' + test_str 
+        endif else begin 
+            new_prefix = prefix 
+        endelse
+        robust_output = loc_input + new_prefix + '_robust.fits'
+        robust_prefix = loc_input + new_prefix + '_robust'
         ;;
         if ( ( NOT file_test( robust_output ) ) OR keyword_set( create ) ) $
             then begin 
             ;;
-            robust_coadd = hs_coadd_sdss_robust( prep_file, /plot, $
-                /save_fits, blue_cut=blue_cut, red_cut=red_cut, $
-                niter=niter, nevec=nevec, hvdisp_home=hvdisp_home )
+            if keyword_set( test_str ) then begin 
+                robust_coadd = hs_coadd_sdss_robust( prep_file, /plot, $
+                    /save_fits, blue_cut=blue_cut, red_cut=red_cut, $
+                    niter=niter, nevec=nevec, hvdisp_home=hvdisp_home, $
+                    test_str=test_str )
+            endif else begin  
+                robust_coadd = hs_coadd_sdss_robust( prep_file, /plot, $
+                    /save_fits, blue_cut=blue_cut, red_cut=red_cut, $
+                    niter=niter, nevec=nevec, hvdisp_home=hvdisp_home )
+            endelse
             ;;
         endif else begin 
             print, '###########################################################'
@@ -139,14 +187,21 @@ pro hs_coadd_sdss_pipe, html_list, hvdisp_home=hvdisp_home, $
         print, '   Co-add the spectra using Median average method !!' 
         print, '###########################################################'
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        median_output = loc_input + prefix + '_median.fits'
-        median_prefix = loc_input + prefix + '_median'
+        median_output = loc_input + new_prefix + '_median.fits'
+        median_prefix = loc_input + new_prefix + '_median'
         ;;
         if ( ( NOT file_test( median_output ) ) OR keyword_set( create ) ) $
             then begin 
             ;;
-            median_coadd = hs_coadd_sdss_median( prep_file, /plot, $
-                /save_fits, n_boot=n_boot, /save_all, hvdisp_home=hvdisp_home ) 
+            if keyword_set( test_str ) then begin 
+                median_coadd = hs_coadd_sdss_median( prep_file, /plot, $
+                    /save_fits, n_boot=n_boot, /save_all, hvdisp_home=hvdisp_home, $
+                    sig_cut=sig_cut, test_str=test_str ) 
+            endif else begin 
+                median_coadd = hs_coadd_sdss_median( prep_file, /plot, $
+                    /save_fits, n_boot=n_boot, /save_all, hvdisp_home=hvdisp_home, $
+                    sig_cut=sig_cut ) 
+            endelse
             ;;
         endif else begin 
             print, '###########################################################'
@@ -167,7 +222,7 @@ pro hs_coadd_sdss_pipe, html_list, hvdisp_home=hvdisp_home, $
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; 3. Put the results in an IDL SAV file
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        sav_file = loc_input + prefix + '_coadd.sav'
+        sav_file = loc_input + new_prefix + '_coadd.sav'
         print, '###########################################################'
         print, '   Save the result to : ' + sav_file + '!' 
         print, '###########################################################'
@@ -215,7 +270,13 @@ pro hs_coadd_sdss_pipe, html_list, hvdisp_home=hvdisp_home, $
             ;; Useful information from Median_Coadd 
             n_pix_median = n_elements( median_coadd.wave )
             median_wave  = median_coadd.wave 
-            median_arr   = median_coadd.med_boot
+            if keyword_set( avg_boot ) then begin 
+                median_arr = median_coadd.avg_boot 
+            endif else begin 
+                median_arr = median_coadd.med_boot
+            endelse
+            median_med   = median_coadd.med_boot 
+            median_avg   = median_coadd.avg_boot 
             median_sig   = median_coadd.sig_boot
             median_min   = median_coadd.min_boot
             median_max   = median_coadd.max_boot
@@ -262,13 +323,14 @@ pro hs_coadd_sdss_pipe, html_list, hvdisp_home=hvdisp_home, $
             ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
             ;; Save a summary file of FITS format
             ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-            sum_file = loc_input + prefix + '_coadd.fits'
+            sum_file = loc_input + new_prefix + '_coadd.fits'
             sum_struc = { n_spec:n_spec, n_boot:n_boot, n_pix:n_pix_median, $
                 sig_convol:sig_convol, $ 
                 min_rest:min_rest, max_rest:max_rest, $ 
                 min_norm:min_norm, max_norm:max_norm, $
                 wave:median_wave,  frac:prep_frac,    snr:prep_s2nr, $ 
-                median_arr:median_arr,   median_sig:median_sig, $ 
+                median_arr:median_arr, median_sig:median_sig, $ 
+                median_med:median_med, median_avg:median_avg, $ 
                 median_mask:median_mask, $
                 median_min:median_min, median_max:median_max, $ 
                 robust_arr:robust_arr, robust_mask:robust_mask, $ 
@@ -282,7 +344,23 @@ pro hs_coadd_sdss_pipe, html_list, hvdisp_home=hvdisp_home, $
             ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
             ;; Make a summary plot
             index_list = 'hs_index_plot.lis' 
-            hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix 
+            if keyword_set( avg_boot ) then begin 
+                if keyword_set( test_str ) then begin
+                    hs_coadd_sdss_plot, sum_file, index_list=index_list, $
+                        prefix=prefix, /avg_boot, test_str=test_str 
+                endif else begin 
+                    hs_coadd_sdss_plot, sum_file, index_list=index_list, $
+                        prefix=prefix, /avg_boot 
+                endelse
+            endif else begin 
+                if keyword_set( test_str ) then begin
+                    hs_coadd_sdss_plot, sum_file, index_list=index_list, $ 
+                        prefix=prefix, test_str=test_str
+                endif else begin 
+                    hs_coadd_sdss_plot, sum_file, index_list=index_list, $ 
+                        prefix=prefix
+                endelse
+            endelse
             ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -1,6 +1,6 @@
 ; + 
 ; NAME:
-;              HS_COADD_SDSS_POST
+;              HS_COADD_SDSS_PLOT
 ;
 ; PURPOSE:
 ;              Make a summary plot for the coadded spectrum 
@@ -15,13 +15,14 @@
 ;
 ; HISTORY:
 ;             Song Huang, 2014/06/05 - First version 
+;             Song Huang, 2014/06/10 - Minor improvements 
 ;-
 ; CATEGORY:    HS_HVDISP
 ;------------------------------------------------------------------------------
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
-    hvdisp_home=hvdisp_home
+    hvdisp_home=hvdisp_home, avg_boot=avg_boot, test_str=test_str
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if NOT keyword_set( hvdisp_home ) then begin 
@@ -41,7 +42,7 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
         prefix = strcompress( prefix, /remove_all ) 
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    loc_coadd    = hvdisp_home + 'coadd/' + prefix + '/'
+    loc_coadd = hvdisp_home + 'coadd/' + prefix + '/'
     if NOT dir_exist( loc_coadd ) then begin 
         print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
         print, ' Can not find the directory : ' + loc_coadd + ' !!'  
@@ -115,7 +116,11 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
                  wave     = coadd_struc.wave 
                  frac     = coadd_struc.frac 
                  snr      = coadd_struc.snr 
-                 med_arr  = coadd_struc.median_arr 
+                 if keyword_set( avg_boot ) then begin 
+                     med_arr = coadd_struc.median_avg 
+                 endif else begin 
+                     med_arr  = coadd_struc.median_arr 
+                 endelse
                  med_sig  = coadd_struc.median_sig 
                  med_min  = coadd_struc.median_min 
                  med_max  = coadd_struc.median_max 
@@ -137,8 +142,14 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Name of the plot 
     prefix = strcompress( prefix, /remove_all ) 
-    plot_1 = loc_coadd + prefix + '_coadd_1.eps'
-    plot_2 = loc_coadd + prefix + '_coadd_2.eps'
+    if keyword_set( test_str ) then begin 
+        test_str = strcompress( test_str, /remove_all ) 
+        new_prefix = prefix + '_' + test_str 
+    endif else begin 
+        new_prefix = prefix 
+    endelse
+    plot_1 = loc_coadd + new_prefix + '_coadd_1.eps'
+    plot_2 = loc_coadd + new_prefix + '_coadd_2.eps'
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -191,10 +202,10 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
     diff_arr = ( ( med_arr[ index_good_3 ] - rob_arr[ index_good_3 ] ) / $
         med_arr[ index_good_3 ] ) * 100.0
     min_diff = min( diff_arr[ index_safe ] ) > ( -2.90 ) 
-    min_diff = min_diff < ( -0.06 )
+    min_diff = min_diff < ( -0.09 )
     max_diff = max( diff_arr[ index_safe ] )
     diff_sep = ( max_diff - min_diff ) 
-    diff_range = [ min_diff, ( max_diff + diff_sep / 40.0 ) ]
+    diff_range = [ min_diff, ( max_diff + diff_sep / 15.0 ) ]
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Flux  
     min_flux_1 = min( rob_arr ) 

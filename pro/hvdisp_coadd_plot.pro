@@ -51,8 +51,8 @@ pro hvdisp_coadd_plot, hvdisp_home=hvdisp_home, index_list=index_list
     spawn, 'ls ' + loc_coadd + '*/z?_*_coadd.fits', list_coadd 
     n_coadd = n_elements( list_coadd ) 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;for ii = 0, ( n_coadd - 1 ), 1 do begin 
-    for ii = 0, 1, 1 do begin 
+    for ii = 0, ( n_coadd - 1 ), 1 do begin 
+    ;for ii = 0, 1, 1 do begin 
         ;; 
         sum_file = list_coadd[ ii ] 
         feature_list = index_list

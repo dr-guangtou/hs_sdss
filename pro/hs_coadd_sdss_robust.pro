@@ -31,7 +31,7 @@
 function hs_coadd_sdss_robust, prep_file, plot=plot, error=error, $
     niter=niter, nevec=nevec, save_fits=save_fits, $
     blue_cut=blue_cut, red_cut=red_cut, hvdisp_home=hvdisp_home, $ 
-    n_repeat=n_repeat
+    n_repeat=n_repeat, test_str=test_str
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if NOT keyword_set( hvdisp_home ) then begin 
@@ -125,6 +125,10 @@ function hs_coadd_sdss_robust, prep_file, plot=plot, error=error, $
     endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Name of the output file 
+    if keyword_set( test_str ) then begin 
+        test_str = strcompress( test_str, /remove_all ) 
+        prefix   = prefix + '_' + test_str 
+    endif
     pca_output  = loc_input + prefix + '_robust.fits'
     ;; Name of the plot 
     pca_figure1 = loc_input + prefix + '_robust.eps'

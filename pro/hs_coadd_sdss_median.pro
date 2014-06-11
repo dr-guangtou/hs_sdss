@@ -9,24 +9,21 @@
 ;    hs_coadd_sdss_boot, prep_file, hvdisp_home=hvdisp_home, $
 ;        /plot, /save_fits, /save_all 
 ; OUTPUT: 
-;    output = { wave:wave, med_boot:fltarr( n_pix ), $
-;        avg_boot:fltarr( n_pix ), sig_boot:fltarr( n_pix ), $
-;        min_boot:fltarr( n_pix ), max_boot:fltarr( n_pix ), $ 
-;        final_nuse:final_nuse, final_frac:final_frac, $
-;        final_mask:final_mask, final_s2nr:final_s2nr }
 ;
 ; AUTHOR:
 ;             Song Huang
 ;
 ; HISTORY:
 ;             Song Huang, 2014/06/05 - First version 
+;             Song Huang, 2014/06/10 - Add the SIG_CUT keyword; Default is 3.0  
 ;-
 ; CATEGORY:    HS_SDSS
 ;------------------------------------------------------------------------------
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 function hs_coadd_sdss_median, prep_file, n_boot=n_boot, $
-    hvdisp_home=hvdisp_home, plot=plot, save_fits=save_fits, save_all=save_all 
+    hvdisp_home=hvdisp_home, plot=plot, save_fits=save_fits, save_all=save_all, $
+    sig_cut=sig_cut, test_str=test_str
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if NOT keyword_set( hvdisp_home ) then begin 
@@ -84,6 +81,10 @@ function hs_coadd_sdss_median, prep_file, n_boot=n_boot, $
     endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Name of the output file 
+    if keyword_set( test_str ) then begin 
+        test_str = strcompress( test_str, /remove_all ) 
+        prefix   = prefix + '_' + test_str 
+    endif
     boot_output = loc_input + prefix + '_median.fits'
     boot_outall = loc_input + prefix + '_median_all.fits'
     ;; Name of the plot 
@@ -117,7 +118,12 @@ function hs_coadd_sdss_median, prep_file, n_boot=n_boot, $
     ;; Median flux 
     output.med_boot = median( median_boot, dimension=2, /even )
     ;; Mean and Sigma 
-    resistant_mean, median_boot, 5.0, avg_boot, sig_boot, $
+    if NOT keyword_set( sig_cut ) then begin 
+        sig_cut = 3.0 
+    endif else begin 
+        sig_cut = float( sig_cut ) 
+    endelse
+    resistant_mean, median_boot, sig_cut, avg_boot, sig_boot, $
         dimension=2, /double, /silent 
     output.avg_boot = avg_boot 
     output.sig_boot = sig_boot 
