@@ -16,7 +16,8 @@
 ; HISTORY:
 ;             Song Huang, 2014/06/05 - First version 
 ;             Song Huang, 2014/06/09 - Make sure the label for index is not 
-;                                      overlapped with the axis
+;                                      overlapped with the axis 
+;             Song Huang, 2014/06/09 - Correct a small typo
 ;-
 ; CATEGORY:    HS_HVDISP
 ;------------------------------------------------------------------------------
@@ -98,17 +99,17 @@ pro hs_spec_index_over, list, label_over=label_over, $
 
     ;; Set the colors 
     if keyword_set( color_line ) then begin 
-        color_line = string( color_lien ) 
+        color_line = string( color_line ) 
     endif else begin 
         color_line = 'TAN4'
     endelse
     if keyword_set( color_fill ) then begin 
-        color_fill = string( color_lien ) 
+        color_fill = string( color_line ) 
     endif else begin 
         color_fill = 'TAN2'
     endelse
     if keyword_set( color_char ) then begin 
-        color_char = string( color_lien ) 
+        color_char = string( color_line ) 
     endif else begin 
         color_char = 'Black'
     endelse
