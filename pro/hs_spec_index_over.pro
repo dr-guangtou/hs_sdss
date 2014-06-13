@@ -18,6 +18,7 @@
 ;             Song Huang, 2014/06/09 - Make sure the label for index is not 
 ;                                      overlapped with the axis 
 ;             Song Huang, 2014/06/09 - Correct a small typo
+;             Song Huang, 2014/06/13 - Fix a small bug related to color 
 ;-
 ; CATEGORY:    HS_HVDISP
 ;------------------------------------------------------------------------------
@@ -64,7 +65,8 @@ pro hs_spec_index_over, list, label_over=label_over, $
     no_fill=no_fill, no_line=no_line, center_line=center_line, $
     color_line=color_line, color_fill=color_fill, color_char=color_char, $
     short_bar=short_bar, label_only=label_only, charsize=charsize, $
-    xstep=xstep, ystep=ystep, max_overlap=max_overlap
+    xstep=xstep, ystep=ystep, max_overlap=max_overlap, l_cushion=l_cushion, $
+    color_center=color_center
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Check input list 
@@ -91,7 +93,13 @@ pro hs_spec_index_over, list, label_over=label_over, $
     min_wave = ( !X.Crange )[0]
     max_wave = ( !X.Crange )[1]
     wave_range = ( max_wave - min_wave )
-    cushion = ( wave_range / 80.0 )
+    ;; 
+    if keyword_set( l_cushion ) then begin 
+        l_cushion = float( l_cushion ) 
+    endif else begin 
+        l_cushion = 80.0 
+    endelse
+    cushion = ( wave_range / l_cushion )
     ;; Check the flux range 
     min_flux = ( !Y.Crange )[0]
     max_flux = ( !Y.Crange )[1]
@@ -104,14 +112,19 @@ pro hs_spec_index_over, list, label_over=label_over, $
         color_line = 'TAN4'
     endelse
     if keyword_set( color_fill ) then begin 
-        color_fill = string( color_line ) 
+        color_fill = string( color_fill ) 
     endif else begin 
         color_fill = 'TAN2'
     endelse
     if keyword_set( color_char ) then begin 
-        color_char = string( color_line ) 
+        color_char = string( color_char ) 
     endif else begin 
         color_char = 'Black'
+    endelse
+    if keyword_set( color_center ) then begin 
+        color_center = string( color_center ) 
+    endif else begin 
+        color_center = 'BLK5'
     endelse
     ;; Set the charsize 
     if keyword_set( charsize ) then begin 
@@ -199,7 +212,7 @@ pro hs_spec_index_over, list, label_over=label_over, $
                     if keyword_set( center_line ) then begin 
                         lam_cen = ( ( lam0 + lam1 ) / 2.0 )
                         cgPlots, [ lam_cen, lam_cen ], !Y.Crange, /data, $
-                            linestyle=2, color=cgColor( 'BLK4' ), $ 
+                            linestyle=2, color=cgColor( color_center ), $ 
                             thick=2.0
                     endif
                 endif else begin 

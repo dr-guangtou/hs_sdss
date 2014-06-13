@@ -14,171 +14,13 @@
 ;             Song Huang
 ;
 ; HISTORY:
-;             Song Huang, 2014/06/05 - First version 
+;             Song Huang, 2014/06/05 - First  version 
+;             Song Huang, 2014/06/12 - Second version 
+;             Song Huang, 2014/06/13 - Third  version 
 ;
 ;-
 ; CATEGORY:    HS_SDSS
 ;------------------------------------------------------------------------------
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; TODO: emifull should be separated from the file
-pro hs_ppxf_emifull_subtract, name_str, imf_index, flux_sub, flux_res, $
-    location=location 
-
-    ;; Location
-    if keyword_set( location ) then begin 
-        location = strcompress( location, /remove_all )
-    endif else begin 
-        location = '/home/hs/Desktop/stack/spec/'
-    endelse
-
-    ;; Read in the spectrum
-    spec_file = location + name_str + '.txt'
-    readcol, spec_file, wave, flux, error, flag, format='F,D,D,I', $
-        comment='#', delimiter=' ', /silent
-    n_pixel = n_elements( wave )
-
-    ;; Collect all the three fitting result files
-    file1 = name_str + '_' + imf_index + '_full_ppxf.fits'
-
-    ;; Read in the results
-    data1 = mrdfits( file1, 1, /silent ) 
-
-    ;; Get the emission line spectra 
-    emiline1 = ( data1.emiline * data1.flux_norm ) 
-
-    ;; Get the residual spectra
-    res1 = ( ( data1.data - data1.best ) * data1.flux_norm )
-
-    ;; Interpolate the emission line spectra to the original wavelength grid
-    emiinter1 = interpolate( emiline1, findex( data1.wave, wave ), /grid)
-
-    ;; Interpolate the residual spectra to the original wavelength grid
-    resinter1 = interpolate( res1, findex( data1.wave, wave ), /grid)
-
-    ;; Clean the emission line spectra
-    emiinter1[ where( ( wave LT min( data1.wave ) ) OR $
-                      ( wave GT max( data1.wave ) ) ) ] = 0.0D
-    ;; Clean the residual spectra
-    resinter1[ where( ( wave LT min( data1.wave ) ) OR $
-                      ( wave GT max( data1.wave ) ) ) ] = 0.0D
-
-
-    ;; Combine the three emission line data
-    emiinter = emiinter1 
-    ;; Combine the three residual line data
-    resinter = resinter1 
-
-    ;; To show 
-    emishow  = ( min( flux ) + 0.1 ) + emiinter 
-    resshow  = ( min( flux ) + 0.1 ) + resinter 
-    
-    ;; Emission line subtracted spectrum 
-    flux_sub = ( flux - emiinter ) 
-    ;; Residual spectrum output 
-    flux_res = resinter 
-    
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    cgPlot,  wave, flux,     xs=1, ys=1, thick=1.5, color=cgColor( 'Blue' )
-    cgOplot, wave, flux_sub, thick=1.5, color=cgColor( 'Red' ) 
-    cgOplot, wave, resshow,  thick=1.5, color=cgColor( 'Gray' )
-    cgOplot, wave, emishow,  thick=1.8, color=cgColor( 'Green' )
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; Save the results to a new txt file  
-    output = name_str + '_' + imf_index + '_emifull.txt' 
-    openw,  lun, output, width=500, /get_lun 
-    printf, lun, '#Wavelength  ,  Flux  ,  Flux_Sub  ,  Emiline  '
-    for jj = 0, ( n_pixel - 1 ), 1 do begin 
-        printf, lun, string( wave[jj] ) + '    ' + string( flux[jj] ) + $
-            '    ' + string( flux_sub[jj] ) + '    ' + string( emiinter[jj] )
-    endfor
-    close, lun 
-    free_lun, lun
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-end
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-pro hs_ppxf_emi_full, spec_file, location=location  
-
-    ;; Location for the spectra
-    if keyword_set( location ) then begin 
-        location = strcompress( location, /remove_all ) 
-    endif else begin 
-        location = '/home/hs/Desktop/stack/spec/' 
-    endelse
-
-    ;; Read in the spectrum
-    spec_file = strcompress( spec_file, /remove_all ) 
-    if ( NOT file_test( location + spec_file ) ) then begin 
-        message, ' Check the spectrum file: ' + spec_file + ' !!'
-    endif 
-    ;; String for the name of the spectrum
-    temp = strsplit( spec_file, '.', /extract )  
-    name_str = strcompress( temp[0], /remove_all )
-    ;; 
-    spec_read = location + spec_file
-    ;; WAVE, FLUX, N_PIXEL 
-    readcol, spec_read, wave, flux, error, flag, format='F,D,D,I', $
-        comment='#', delimiter=' ', /silent
-    n_pixel = n_elements( wave )
-
-    ;; The list of stellar templates
-    ;temp_files = [ 'mius_un08.lis', 'mius_un18.lis' ]
-    temp_files = [ 'mius_un08.lis', 'mius_ku13.lis', 'mius_un13.lis', $
-                   'mius_un18.lis', 'mius_un20.lis', 'mius_unmix.lis' ]
-    n_temp = n_elements( temp_files ) 
-    ;; Three files for each template 
-    n_file = n_temp
-    ;; Array for the emission line subtracted spectra 
-    sub_arr = dblarr( n_pixel, n_temp ) 
-    res_arr = dblarr( n_pixel, n_temp ) 
-    emi_arr = dblarr( n_pixel, n_temp ) 
-
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    for ii = 0, ( n_temp - 1 ), 1 do begin 
-
-        temp_list = strcompress( temp_files[ii], /remove_all ) 
-        temp = strsplit( temp_list, '._', /extract ) 
-        ;; Index for the IMF choice
-        imf_index = temp[1] 
-
-        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        ;; First part: 3900:7100 
-        hs_ppxf_emi_fitting, spec_file, temp_list, location=location, $
-            min_wave=3900.0, max_wave=7100.0, /spec_txt, /save_result, $
-            prefix=imf_index + '_full', /debug
-        result_1 = name_str + '_' + imf_index + '_full_ppxf.fits'
-        if NOT file_test( result_1 ) then begin 
-            message, ' Can not find : ' + result_1 + ' !!!!'
-        endif 
-        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        ;; Get the emission line subtraction file 
-        hs_ppxf_emifull_subtract, name_str, imf_index, $
-            flux_sub, flux_res, location=location 
-        ;;
-        sub_arr[ *, ii ] = flux_sub
-        res_arr[ *, ii ] = flux_res
-        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-    endfor
-
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    fits_temp  = name_str + '_ppxf_emifull.fits'
-    struc_temp = { wave:wave, flux:flux, sub_arr:sub_arr, res_arr:res_arr }
-    mwrfits, struc_temp, fits_temp, /create 
-    ;; Make the comparison plot
-    plot_name = name_str + '_full.eps'
-    make_compare_plot, fits_temp, plot_name=plot_name
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-end 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 pro hs_setup_miuscat_library, temp_list, velscale, fwhm_data, fwhm_libr, $ 
@@ -342,7 +184,7 @@ end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 pro make_compare_plot, fits_file, spec_loc, plot_name=plot_name, $
-    hvdisp_home=hvdisp_home 
+    hvdisp_home=hvdisp_home, second_file=second_file 
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if NOT keyword_set( hvdisp_home ) then begin 
@@ -388,13 +230,38 @@ pro make_compare_plot, fits_file, spec_loc, plot_name=plot_name, $
         emi_arr[ *, kk ] = ( flux - sub_arr[ *, kk ] ) 
     endfor 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    if keyword_set( second_file ) then begin 
+        if NOT file_test( second_file ) then begin 
+            plot_second = 0 
+        endif else begin 
+            struc_second = mrdfits( second_file, 1 )
+            wave_second  = struc_second.wave
+            flux_second  = struc_second.flux
+            sub_second   = struc_second.sub_arr 
+            res_second   = struc_second.res_arr 
+            n_pix_second = ( size( sub_second, /dim ) )[0]
+            size_second  = size( sub_second, /dim ) 
+            emi_second   = dblarr( n_pix_second, n_temp )
+            for ll = 0, ( n_temp - 1 ), 1 do begin 
+                emi_second[ *, ll ] = ( flux_second - sub_second[ *, ll ] ) 
+            endfor 
+            plot_second = 1
+        endelse
+    endif else begin 
+        plot_second = 0 
+    endelse
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Index list 
     index_list = loc_lis + 'hs_index_emi.lis' 
     ;; Make a figure to compare the results
     if NOT keyword_set( plot_name ) then begin 
-        compare_plot = spec_loc + name_str + '.eps' 
+        if ( plot_second EQ 1) then begin 
+            compare_plot = spec_loc + name_str + '_both.eps' 
+        endif else begin 
+            compare_plot = spec_loc + name_str + '.eps' 
+        endelse
     endif else begin 
         compare_plot = spec_loc + strcompress( plot_name, /remove_all ) 
     endelse
@@ -429,16 +296,18 @@ pro make_compare_plot, fits_file, spec_loc, plot_name=plot_name, $
     index_wave_3 = where( ( wave GT wave_range_3[0] ) AND $ 
                           ( wave LT wave_range_3[1] ) )
     index_wave = [ index_wave_1, index_wave_2, index_wave_3 ]
-    ;;
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     min_flux = min( flux[ index_wave ] ) 
     max_flux = max( flux[ index_wave ] ) 
-    sep_flux = ( ( max_flux - min_flux ) * 0.3 )
-    flux_range = [ ( min_flux - 0.09 ), ( max_flux + sep_flux ) ]
-    ;;
+    sep_flux = ( ( max_flux - min_flux ) * 0.36 )
+    flux_range = [ ( min_flux - 0.05 ), ( max_flux + sep_flux ) ]
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     min_res = ( min( emi_arr ) < min( res_arr ) ) 
     max_res = ( max( emi_arr ) > max( res_arr ) )
-    res_range = [ ( min_res - 0.005 ), ( max_res + 0.01 ) ]
-    ;;
+    res_range = [ ( min_res - 0.005 ), ( max_res + 0.008 ) ]
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     device, filename=compare_plot, font_size=9.0, /encapsulated, $
         /color, set_font='TIMES-ROMAN', /bold, xsize=psxsize, ysize=psysize
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -449,52 +318,81 @@ pro make_compare_plot, fits_file, spec_loc, plot_name=plot_name, $
         xrange=wave_range_1, yrange=flux_range, thick=1.5, $
         color=cgColor( 'BLK2' ), position=pos1a, $
         xtickformat='(A1)', xthick=8, ythick=8, charthick=4, charsize=3.0, $
-        /nodata, ytitle='Normalized Flux', xticklen=0.04
+        /nodata, ytitle='Normalized Flux', xticklen=0.03, yticklen=0.03
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Overplot the features
-    hs_spec_index_over, index_list, color_fill='TAN2',$
-        color_line='TAN4'
+    hs_spec_index_over, index_list, color_fill='TAN2', color_line='TAN2'
+    hs_spec_index_over, index_list, /no_fill, /no_line, /center_line, $
+        color_center='BLK4'
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Original data 
-    cgOplot, wave, flux, thick=3.0, linestyle=0, color=cgColor( 'BLK6' )
+    cgOplot, wave, flux, thick=3.5, linestyle=0, color=cgColor( 'BLK6' )
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Stellar templates
     for ii = 0, ( n_temp - 1 ), 1 do begin 
-        cgOPlot, wave, sub_arr[ *, ii ], thick=2.0, linestyle=0, $
+        cgOPlot, wave, sub_arr[ *, ii ], thick=3.0, linestyle=0, $
             color=cgColor( color_list[ii], filename=color_file )
+        if ( plot_second EQ 1) then begin 
+            cgOPlot, wave_second, sub_second[ *, ii ], thick=3.0, linestyle=2, $
+                color=cgColor( color_list[ii], filename=color_file )
+        endif 
     endfor 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Label 
-    hs_spec_index_over, index_list, /label_only, $
-        xstep=50, ystep=19, max_overlap=12, charsize=2.0
+    hs_spec_index_over, index_list, /label_only, l_cushion=40, $
+        xstep=10, ystep=16, max_overlap=7, charsize=2.2
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Axis
     cgPlot, wave, flux, xs=1, ys=1, /noerase, $
         xrange=wave_range_1, yrange=flux_range, thick=1.5, $
         color=cgColor( 'BLK2' ), position=pos1a, $
         xtickformat='(A1)', xthick=8, ythick=8, charthick=4, charsize=3.0, $
-        /nodata, xticklen=0.04
+        /nodata, xticklen=0.03, yticklen=0.03
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Residual & Emission line
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Axis
     cgPlot, wave, emi_arr[*,0], xs=1, ys=1, /noerase, $
         xrange=wave_range_1, yrange=res_range, thick=1.5, $
         color=cgColor( 'BLK2' ), position=pos1b, $
         xthick=8, ythick=8, charthick=4, charsize=3.0, $
-        /nodata, xtitle='Wavelength', ytitle='Emi. & Res. Flux', xticklen=0.04
+        /nodata, xtitle='Wavelength', ytitle='Emi. & Res. Flux', $
+        xticklen=0.03, yticklen=0.03
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Overplot the features
-    hs_spec_index_over, index_list, color_fill='TAN2',$
-        color_line='TAN4'
+    hs_spec_index_over, index_list, color_fill='TAN2', color_line='TAN2'
+    hs_spec_index_over, index_list, /no_fill, /no_line, /center_line, $
+        color_center='BLK4'
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Residual spectra 
     for ii = 0, ( n_temp - 1 ), 1 do begin 
-        cgOPlot, wave, res_arr[ *, ii ], thick=3.0, linestyle=( ii + 1 ), $
+        cgOPlot, wave, res_arr[ *, ii ], thick=2.0, linestyle=( ii + 1 ), $
             color=cgColor( 'BLK5' )
+        if ( plot_second EQ 1) then begin 
+            cgOPlot, wave_second, res_second[ *, ii ], thick=2.0, $
+                linestyle=( ii + 1 ), color=cgColor( 'BLU3' )
+        endif
     endfor 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Emission line spectra 
     for jj = 0, ( n_temp - 1 ), 1 do begin 
         cgOPlot, wave, emi_arr[ *, jj ], thick=3.0, $
             linestyle=0, color=cgColor( color_list[jj], filename=color_file )
+        if ( plot_second EQ 1) then begin 
+            cgOPlot, wave_second, emi_second[ *, jj ], thick=3.0, linestyle=2, $
+                color=cgColor( color_list[jj], filename=color_file )
+        endif
     endfor 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Axis
     cgPlot, wave, emi_arr[*,0], xs=1, ys=1, /noerase, $
         xrange=wave_range_1, yrange=res_range, thick=1.5, $
         color=cgColor( 'BLK2' ), position=pos1b, $
         xthick=8, ythick=8, charthick=4, charsize=3.0, $
-        /nodata, xticklen=0.04
+        /nodata, xticklen=0.03, yticklen=0.03
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Second plot
@@ -502,54 +400,82 @@ pro make_compare_plot, fits_file, spec_loc, plot_name=plot_name, $
     cgPlot, wave, flux, xs=1, ys=1, /noerase, $
         xrange=wave_range_2, yrange=flux_range, thick=1.5, $
         color=cgColor( 'BLK2' ), position=pos2a, $
-        xtickformat='(A1)', ytickformat='(A1)', xthick=8, ythick=8, $
-        charthick=4, charsize=3.0, /nodata, xticklen=0.04
+        xtickformat='(A1)', xthick=8, ythick=8, charthick=4, charsize=3.0, $
+        /nodata, ytickformat='(A1)', xticklen=0.03, yticklen=0.03
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Overplot the features
-    hs_spec_index_over, index_list, color_fill='TAN2',$
-        color_line='TAN4'
+    hs_spec_index_over, index_list, color_fill='TAN2', color_line='TAN2'
+    hs_spec_index_over, index_list, /no_fill, /no_line, /center_line, $
+        color_center='BLK4'
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Original data 
-    cgOplot, wave, flux, thick=3.0, linestyle=0, color=cgColor( 'BLK6' )
+    cgOplot, wave, flux, thick=3.5, linestyle=0, color=cgColor( 'BLK6' )
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Stellar templates
     for ii = 0, ( n_temp - 1 ), 1 do begin 
-        cgOPlot, wave, sub_arr[ *, ii ], thick=2.0, linestyle=0, $
+        cgOPlot, wave, sub_arr[ *, ii ], thick=3.0, linestyle=0, $
             color=cgColor( color_list[ii], filename=color_file )
+        if ( plot_second EQ 1) then begin 
+            cgOPlot, wave_second, sub_second[ *, ii ], thick=3.0, linestyle=2, $
+                color=cgColor( color_list[ii], filename=color_file )
+        endif 
     endfor 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Label 
-    hs_spec_index_over, index_list, /label_only, $
-        xstep=50, ystep=19, max_overlap=7, charsize=2.0
+    hs_spec_index_over, index_list, /label_only, l_cushion=40, $
+        xstep=10, ystep=16, max_overlap=4, charsize=2.2
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Axis
     cgPlot, wave, flux, xs=1, ys=1, /noerase, $
         xrange=wave_range_2, yrange=flux_range, thick=1.5, $
         color=cgColor( 'BLK2' ), position=pos2a, $
-        xtickformat='(A1)', ytickformat='(A1)', xthick=8, ythick=8, $
-        charthick=4, charsize=3.0, /nodata, xticklen=0.04
+        xtickformat='(A1)', xthick=8, ythick=8, charthick=4, charsize=3.0, $
+        /nodata, xticklen=0.03, yticklen=0.03, ytickformat='(A1)'
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Residual & Emission line
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Axis
     cgPlot, wave, emi_arr[*,0], xs=1, ys=1, /noerase, $
         xrange=wave_range_2, yrange=res_range, thick=1.5, $
         color=cgColor( 'BLK2' ), position=pos2b, $
         xthick=8, ythick=8, charthick=4, charsize=3.0, $
-        /nodata, xtitle='Wavelength', xticklen=0.04, $
-        ytickformat='(A1)'
+        /nodata, xtitle='Wavelength',  $
+        xticklen=0.03, yticklen=0.03, ytickformat='(A1)'
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Overplot the features
-    hs_spec_index_over, index_list, color_fill='TAN2',$
-        color_line='TAN4'
+    hs_spec_index_over, index_list, color_fill='TAN2', color_line='TAN2'
+    hs_spec_index_over, index_list, /no_fill, /no_line, /center_line, $
+        color_center='BLK4'
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Residual spectra 
     for ii = 0, ( n_temp - 1 ), 1 do begin 
-        cgOPlot, wave, res_arr[ *, ii ], thick=3.0, linestyle=( ii + 1 ), $
+        cgOPlot, wave, res_arr[ *, ii ], thick=2.0, linestyle=( ii + 1 ), $
             color=cgColor( 'BLK5' )
+        if ( plot_second EQ 1) then begin 
+            cgOPlot, wave_second, res_second[ *, ii ], thick=2.0, $
+                linestyle=( ii + 1 ), color=cgColor( 'BLU3' )
+        endif
     endfor 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Emission line spectra 
     for jj = 0, ( n_temp - 1 ), 1 do begin 
         cgOPlot, wave, emi_arr[ *, jj ], thick=3.0, $
             linestyle=0, color=cgColor( color_list[jj], filename=color_file )
+        if ( plot_second EQ 1) then begin 
+            cgOPlot, wave_second, emi_second[ *, jj ], thick=3.0, linestyle=2, $
+                color=cgColor( color_list[jj], filename=color_file )
+        endif
     endfor 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Axis
     cgPlot, wave, emi_arr[*,0], xs=1, ys=1, /noerase, $
         xrange=wave_range_2, yrange=res_range, thick=1.5, $
         color=cgColor( 'BLK2' ), position=pos2b, $
         xthick=8, ythick=8, charthick=4, charsize=3.0, $
-        /nodata, xticklen=0.04, ytickformat='(A1)'
+        /nodata, xticklen=0.03, yticklen=0.03, ytickformat='(A1)'
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Third plot
@@ -557,59 +483,172 @@ pro make_compare_plot, fits_file, spec_loc, plot_name=plot_name, $
     cgPlot, wave, flux, xs=1, ys=1, /noerase, $
         xrange=wave_range_3, yrange=flux_range, thick=1.5, $
         color=cgColor( 'BLK2' ), position=pos3a, $
-        xtickformat='(A1)', ytickformat='(A1)', xthick=8, ythick=8, $
-        charthick=4, charsize=3.0, /nodata, xticklen=0.04
+        xtickformat='(A1)', xthick=8, ythick=8, charthick=4, charsize=3.0, $
+        /nodata, ytickformat='(A1)', xticklen=0.03, yticklen=0.03
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Overplot the features
-    hs_spec_index_over, index_list, color_fill='TAN2',$
-        color_line='TAN4'
+    hs_spec_index_over, index_list, color_fill='TAN2', color_line='TAN2'
+    hs_spec_index_over, index_list, /no_fill, /no_line, /center_line, $
+        color_center='BLK4'
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Original data 
-    cgOplot, wave, flux, thick=3.0, linestyle=0, color=cgColor( 'BLK6' )
+    cgOplot, wave, flux, thick=3.5, linestyle=0, color=cgColor( 'BLK6' )
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Stellar templates
     for ii = 0, ( n_temp - 1 ), 1 do begin 
-        cgOPlot, wave, sub_arr[ *, ii ], thick=2.0, linestyle=0, $
+        cgOPlot, wave, sub_arr[ *, ii ], thick=3.0, linestyle=0, $
             color=cgColor( color_list[ii], filename=color_file )
+        if ( plot_second EQ 1) then begin 
+            cgOPlot, wave_second, sub_second[ *, ii ], thick=3.0, linestyle=2, $
+                color=cgColor( color_list[ii], filename=color_file )
+        endif 
     endfor 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Label 
-    hs_spec_index_over, index_list, /label_only, $
-        xstep=50, ystep=19, max_overlap=7, charsize=2.0
+    hs_spec_index_over, index_list, /label_only, l_cushion=40, $
+        xstep=10, ystep=16, max_overlap=3, charsize=2.2
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Axis
     cgPlot, wave, flux, xs=1, ys=1, /noerase, $
         xrange=wave_range_3, yrange=flux_range, thick=1.5, $
         color=cgColor( 'BLK2' ), position=pos3a, $
-        xtickformat='(A1)', ytickformat='(A1)', xthick=8, ythick=8, $
-        charthick=4, charsize=3.0, /nodata, xticklen=0.04
+        xtickformat='(A1)', xthick=8, ythick=8, charthick=4, charsize=3.0, $
+        /nodata, xticklen=0.03, yticklen=0.03, ytickformat='(A1)'
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Residual & Emission line
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Axis
     cgPlot, wave, emi_arr[*,0], xs=1, ys=1, /noerase, $
         xrange=wave_range_3, yrange=res_range, thick=1.5, $
         color=cgColor( 'BLK2' ), position=pos3b, $
         xthick=8, ythick=8, charthick=4, charsize=3.0, $
-        /nodata, xtitle='Wavelength', xticklen=0.04, $
-        ytickformat='(A1)'
+        /nodata, xtitle='Wavelength', $ 
+        xticklen=0.03, yticklen=0.03, ytickformat='(A1)'
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Overplot the features
-    hs_spec_index_over, index_list, color_fill='TAN2',$
-        color_line='TAN4'
+    hs_spec_index_over, index_list, color_fill='TAN2', color_line='TAN2'
+    hs_spec_index_over, index_list, /no_fill, /no_line, /center_line, $
+        color_center='BLK4'
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Residual spectra 
     for ii = 0, ( n_temp - 1 ), 1 do begin 
-        cgOPlot, wave, res_arr[ *, ii ], thick=3.0, linestyle=( ii + 1 ), $
+        cgOPlot, wave, res_arr[ *, ii ], thick=2.0, linestyle=( ii + 1 ), $
             color=cgColor( 'BLK5' )
+        if ( plot_second EQ 1) then begin 
+            cgOPlot, wave_second, res_second[ *, ii ], thick=2.0, $
+                linestyle=( ii + 1 ), color=cgColor( 'BLU3' )
+        endif
     endfor 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Emission line spectra 
     for jj = 0, ( n_temp - 1 ), 1 do begin 
         cgOPlot, wave, emi_arr[ *, jj ], thick=3.0, $
             linestyle=0, color=cgColor( color_list[jj], filename=color_file )
+        if ( plot_second EQ 1) then begin 
+            cgOPlot, wave_second, emi_second[ *, jj ], thick=3.0, linestyle=2, $
+                color=cgColor( color_list[jj], filename=color_file )
+        endif
     endfor 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Axis
     cgPlot, wave, emi_arr[*,0], xs=1, ys=1, /noerase, $
         xrange=wave_range_3, yrange=res_range, thick=1.5, $
         color=cgColor( 'BLK2' ), position=pos3b, $
         xthick=8, ythick=8, charthick=4, charsize=3.0, $
-        /nodata, xticklen=0.04, ytickformat='(A1)'
+        /nodata, xticklen=0.03, yticklen=0.03, ytickformat='(A1)'
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     device, /close 
     set_plot, mydevice
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+end
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+pro hs_ppxf_emi_subfull, spec_loc, name_str, imf_index, flux_sub, flux_res, $
+    hvdisp_home=hvdisp_home, plot=plot
+
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    if NOT keyword_set( hvdisp_home ) then begin 
+        hvdisp_location, hvdisp_home, data_home
+    endif else begin 
+        hvdisp_home = strcompress( hvdisp_home, /remove_all ) 
+    endelse
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    loc_coadd   = hvdisp_home + 'coadd/'
+    loc_templis = hvdisp_home + 'pro/lis/'
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Read in the spectrum
+    spec_file = spec_loc + name_str + '.txt'
+    readcol, spec_file, wave, flux, error, flag, format='F,D,D,I', $
+        comment='#', delimiter=' ', /silent
+    n_pixel = n_elements( wave )
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Collect all the three fitting result files
+    f_file = spec_loc + 'ppxf/' + name_str + '_' + imf_index + $
+        '_f_ppxf_emirem.fits'
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Read in the results
+    f_data = mrdfits( f_file, 1, /silent ) 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Get the emission line spectra 
+    f_emiline = ( f_data.emiline * f_data.flux_norm ) 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Get the residual spectra
+    f_res = ( ( f_data.data - f_data.best ) * f_data.flux_norm )
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Interpolate the emission line spectra to the original wavelength grid
+    f_emiinter = interpolate( f_emiline, findex( f_data.wave, wave ), /grid)
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Interpolate the residual spectra to the original wavelength grid
+    f_resinter = interpolate( f_res, findex( f_data.wave, wave ), /grid)
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Clean the emission line spectra
+    f_emiinter[ where( ( wave LT min( f_data.wave ) ) OR $
+                       ( wave GT max( f_data.wave ) ) ) ] = 0.0D
+    ;; Clean the residual spectra
+    f_resinter[ where( ( wave LT min( f_data.wave ) ) OR $
+                       ( wave GT max( f_data.wave ) ) ) ] = 0.0D
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Combine the three emission line data
+    emiinter = f_emiinter 
+    ;; Combine the three residual line data
+    resinter = f_resinter 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; To show 
+    emishow  = ( min( flux ) + 0.1 ) + emiinter 
+    resshow  = ( min( flux ) + 0.1 ) + resinter 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Emission line subtracted spectrum 
+    flux_sub = ( flux - emiinter ) 
+    ;; Residual spectrum output 
+    flux_res = resinter 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    if keyword_set( plot ) then begin 
+        cgPlot,  wave, flux,     xs=1, ys=1, thick=1.5, color=cgColor( 'Blue' )
+        cgOplot, wave, flux_sub, thick=1.5, color=cgColor( 'Red' ) 
+        cgOplot, wave, resshow,  thick=1.5, color=cgColor( 'Gray' )
+        cgOplot, wave, emishow,  thick=1.8, color=cgColor( 'Green' )
+    endif 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Save the results to a new txt file  
+    output = spec_loc + name_str + '_' + imf_index + '_ppxf_emirem_b.txt' 
+    openw,  lun, output, width=500, /get_lun 
+    printf, lun, '#Wavelength  ,  Flux  ,  Flux_Sub  ,  Emiline  '
+    for jj = 0, ( n_pixel - 1 ), 1 do begin 
+        printf, lun, string( wave[jj] ) + '    ' + string( flux[jj] ) + $
+            '    ' + string( flux_sub[jj] ) + '    ' + string( emiinter[jj] )
+    endfor
+    close, lun 
+    free_lun, lun
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -635,9 +674,12 @@ pro hs_ppxf_emi_subtract, spec_loc, name_str, imf_index, flux_sub, flux_res, $
     n_pixel = n_elements( wave )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Collect all the three fitting result files
-    file1 = spec_loc + name_str + '_' + imf_index + '_1_ppxf_emiremove.fits'
-    file2 = spec_loc + name_str + '_' + imf_index + '_2_ppxf_emiremove.fits'
-    file3 = spec_loc + name_str + '_' + imf_index + '_3_ppxf_emiremove.fits'
+    file1 = spec_loc + 'ppxf/' + name_str + '_' + imf_index + $
+        '_1_ppxf_emirem.fits'
+    file2 = spec_loc + 'ppxf/' + name_str + '_' + imf_index + $
+        '_2_ppxf_emirem.fits'
+    file3 = spec_loc + 'ppxf/' + name_str + '_' + imf_index + $
+        '_3_ppxf_emirem.fits'
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Read in the results
     data1 = mrdfits( file1, 1, /silent ) 
@@ -701,7 +743,7 @@ pro hs_ppxf_emi_subtract, spec_loc, name_str, imf_index, flux_sub, flux_res, $
     endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Save the results to a new txt file  
-    output = spec_loc + name_str + '_' + imf_index + '_emisub.txt' 
+    output = spec_loc + name_str + '_' + imf_index + '_ppxf_emirem_a.txt' 
     openw,  lun, output, width=500, /get_lun 
     printf, lun, '#Wavelength  ,  Flux  ,  Flux_Sub  ,  Emiline  '
     for jj = 0, ( n_pixel - 1 ), 1 do begin 
@@ -722,8 +764,9 @@ pro hs_ppxf_emi_fitting, spec_file, temp_list, $
     spec_txt=spec_txt,   hvdisp_home=hvdisp_home, $ 
     plot_result=plot_result, save_result=save_result, $ 
     vel_guess=vel_guess,     sig_guess=sig_guess, $
-    sn_ratio=sn_ratio, mdegree=mdegree, quiet=quiet, debug=debug, $
-    prefix=prefix, save_temp=save_temp
+    sn_ratio=sn_ratio, mdegree=mdegree, n_moments=n_moments, $
+    quiet=quiet, debug=debug, $
+    prefix=prefix, save_temp=save_temp, result_file=result_file
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     on_error, 2
@@ -748,6 +791,12 @@ pro hs_ppxf_emi_fitting, spec_file, temp_list, $
         mdegree = long( mdegree ) 
     endif else begin 
         mdegree = 10 
+    endelse
+    ;; Order of the Gauss-Hermite moments to fit 
+    if keyword_set( n_moments ) then begin 
+        n_moments = long( n_moments ) 
+    endif else begin 
+        n_moments = 2
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -852,7 +901,8 @@ pro hs_ppxf_emi_fitting, spec_file, temp_list, $
     endelse
     ;; XXX TODO: Under test 
     if NOT keyword_set( error_arr ) then begin 
-        ;noise = ( galaxy * 0 ) + 0.0300
+        ;error = median( galaxy / sn_ratio ) 
+        ;noise = ( galaxy * 0 ) + error
         noise = ( SQRT( galaxy ) ) / sn_ratio
     endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -949,7 +999,7 @@ pro hs_ppxf_emi_fitting, spec_file, temp_list, $
     ;; Assign Component=0 for stellar templates 
     ;;    and Component=1 for emission line templates
     component = [ replicate( 0, num_stellar ) , replicate( 1, num_emiline ) ]
-    moments   = [ 4 , 4 ] ;; Fit (Vel, Sig ) for both stars and gas 
+    moments   = [ n_moments , n_moments ] ;; Fit (Vel, Sig ) for both stars and gas 
     start     = [ [ start ] , [ start ] ]
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -1008,7 +1058,11 @@ pro hs_ppxf_emi_fitting, spec_file, temp_list, $
     if keyword_set( save_result ) then begin 
 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        result_file = spec_loc + name_str + '_ppxf_emiremove.fits' 
+        if keyword_set( result_file ) then begin 
+            result_file = spec_loc + 'ppxf/' + result_file 
+        endif else begin 
+            result_file = spec_loc + 'ppxf/' + name_str + '_ppxf_emirem.fits' 
+        endelse
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         print, '###############################################################'
         print, ' Save the result to : ' + result_file 
@@ -1073,7 +1127,7 @@ pro hs_ppxf_emi_fitting, spec_file, temp_list, $
     if keyword_set( debug ) then begin 
 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        result_plot = spec_loc + name_str + '_ppxf_debug.eps' 
+        result_plot = spec_loc + 'ppxf/' + name_str + '_ppxf_debug.eps' 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         mydevice = !d.name 
         !p.font=1
@@ -1096,7 +1150,7 @@ pro hs_ppxf_emi_fitting, spec_file, temp_list, $
         for xx = 0, ( num_stellar - 1 ), 1 do begin 
             temp = stellar_templates[*,xx]
             cgOPlot, wave_lin_temp, ( temp / max( temp ) ), $
-                color=cgColor( 'BLK3' ), thick=0.8
+                color=cgColor( 'BLK2' ), thick=0.6
         endfor 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; Emission line templates
@@ -1110,21 +1164,16 @@ pro hs_ppxf_emi_fitting, spec_file, temp_list, $
         endfor 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; Data 
-        cgOplot, wave_ori, ( flux_ori / flux_norm ), color=cgColor( 'BLK6' ), $
-            thick=1.8 
-        cgOplot, wave_lin, galaxy, color=cgColor( 'BLU4' ), thick=2.0
+        cgOplot, wave_lin, galaxy, color=cgColor( 'BLK7' ), thick=2.0
         ;; 
-        cgOplot, wave_lin, bestfit, color=cgColor( 'RED6' ), linestyle=0, $
+        cgOplot, wave_lin, bestfit, color=cgColor( 'BLU6' ), linestyle=0, $
             thick=1.5
+        ;;
+        cgOplot, wave_lin, best_ste,  color=cgColor( 'RED5' ), thick=1.5, $
+            linestyle=0 
         ;;
         cgOplot, wave_lin, mpoly,   color=cgColor( 'GRN5' ), linestyle=2, $
             thick=1.5
-        ;;
-        cgOplot, wave_lin, best_temp, color=cgColor( 'GRN5' ), thick=1.5, $ 
-            linestyle=1 
-        ;;
-        cgOplot, wave_lin, best_ste,  color=cgColor( 'Orange' ), thick=1.2, $
-            linestyle=0 
         ;;
         cgPlot, wave_ori, ( flux_ori / flux_norm ), xs=1, ys=1, /noerase, $
             xrange=wave_range_temp, yrange=[0.12,1.19], thick=1.5, $
@@ -1166,47 +1215,14 @@ end
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; TODO: make it a separate file 
-pro list_ppxf_emi_remove, list 
-
-    readcol, list, spec, format='A', comment='#', delimiter=' ', /silent 
-    n_spec = n_elements( spec ) 
-
-    for ii = 0, ( n_spec - 1 ), 1 do begin 
-
-        spec_file = strcompress( spec[ ii ], /remove_all ) + '.txt'
-
-        hs_ppxf_emi_remove, spec_file
-
-    endfor 
-
-end
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-pro list_ppxf_emifull_remove, list 
-
-    location = '/home/hs/Desktop/stack/spec/'
-
-    readcol, list, spec, format='A', comment='#', delimiter=' ', /silent 
-    n_spec = n_elements( spec ) 
-
-    for ii = 0, ( n_spec - 1 ), 1 do begin 
-
-        spec_file = strcompress( spec[ ii ], /remove_all ) + '.txt'
-
-        hs_ppxf_emifull_remove, spec_file, location=location
-
-    endfor 
-
-end
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-pro hs_ppxf_emi_remove, spec_file, hvdisp_home=hvdisp_home 
+pro hs_ppxf_emi_remove, spec_file, hvdisp_home=hvdisp_home, $
+    wrange1=wrange1, wrange2=wrange2, wrange3=wrange3, wrange4=wrange4
+  
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    on_error, 2
+    compile_opt idl2
+    resolve_all, /quiet
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if NOT keyword_set( hvdisp_home ) then begin 
@@ -1240,6 +1256,10 @@ pro hs_ppxf_emi_remove, spec_file, hvdisp_home=hvdisp_home
             spec_loc = spec_loc + temp[ nn ] + '/' 
         endfor 
     endelse
+    ;;
+    if NOT dir_exist( spec_loc + 'ppxf/' ) then begin 
+        spawn, 'mkdir ' + spec_loc + 'ppxf/' 
+    endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     temp = strsplit( spec_name, '.', /extract ) 
     name_str = strcompress( temp[0], /remove_all )
@@ -1250,9 +1270,9 @@ pro hs_ppxf_emi_remove, spec_file, hvdisp_home=hvdisp_home
     n_pixel = n_elements( wave )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; The list of stellar templates
-    ;temp_files = [ 'mius_un08.lis', 'mius_un18.lis' ]
+    ;temp_files = [ 'mius_ku13.lis', 'mius_un18.lis' ]
     temp_files = [ 'mius_un08.lis', 'mius_ku13.lis', 'mius_un13.lis', $
-                  'mius_un18.lis', 'mius_un20.lis', 'mius_unmix.lis' ]
+                   'mius_un18.lis', 'mius_un20.lis', 'mius_unmix.lis' ]
     n_temp = n_elements( temp_files ) 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Three files for each template 
@@ -1261,7 +1281,59 @@ pro hs_ppxf_emi_remove, spec_file, hvdisp_home=hvdisp_home
     ;; Array for the emission line subtracted spectra 
     sub_arr = dblarr( n_pixel, n_temp ) 
     res_arr = dblarr( n_pixel, n_temp ) 
-    emi_arr = dblarr( n_pixel, n_temp ) 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    sub_ful = dblarr( n_pixel, n_temp ) 
+    res_ful = dblarr( n_pixel, n_temp ) 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Set up the wavelength ranges for fitting
+    if NOT keyword_set( wrange1 ) then begin 
+        wrange1 = [ 4010.0, 4750.0 ]
+    endif else begin 
+        if ( n_elements( wrange1 ) NE 2 ) then begin 
+            print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+            print, ' WRANGE1 should be in the form of : [ W1, W2 ]  !!'
+            print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+            message, ' ' 
+        endif else begin 
+            wrange1 = wrange1 
+        endelse 
+    endelse
+    if NOT keyword_set( wrange2 ) then begin 
+        wrange2 = [ 4620.0, 5120.0 ]
+    endif else begin 
+        if ( n_elements( wrange2 ) NE 2 ) then begin 
+            print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+            print, ' WRANGE2 should be in the form of : [ W1, W2 ]  !!'
+            print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+            message, ' ' 
+        endif else begin 
+            wrange2 = wrange2 
+        endelse 
+    endelse
+    if NOT keyword_set( wrange3 ) then begin 
+        wrange3 = [ 6100.0, 7000.0 ]
+    endif else begin 
+        if ( n_elements( wrange3 ) NE 2 ) then begin 
+            print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+            print, ' WRANGE3 should be in the form of : [ W1, W2 ]  !!'
+            print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+            message, ' ' 
+        endif else begin 
+            wrange3 = wrange3 
+        endelse 
+    endelse
+    if NOT keyword_set( wrange4 ) then begin 
+        wrange4 = [ 4002, 7050.0 ]
+    endif else begin 
+        if ( n_elements( wrange4 ) NE 2 ) then begin 
+            print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+            print, ' WRANGE4 should be in the form of : [ W1, W2 ]  !!'
+            print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+            message, ' ' 
+        endif else begin 
+            wrange4 = wrange4 
+        endelse 
+    endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1275,40 +1347,40 @@ pro hs_ppxf_emi_remove, spec_file, hvdisp_home=hvdisp_home
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        ;; First part: 3900:4520 
+        ;; First part
         ;; H_delta & H_gamma
+        result_1 = name_str + '_' + imf_index + '_1_ppxf_emirem.fits'
+        ;;
         hs_ppxf_emi_fitting, spec_file, temp_list, hvdisp_home=hvdisp_home, $
-            min_wave=3900.0, max_wave=4520.0, /spec_txt, /save_result, $
+            min_wave=wrange1[0], max_wave=wrange1[1], /spec_txt, /save_result, $
             prefix=imf_index + '_1', /debug
-        result_1 = spec_loc + name_str + '_' + imf_index + $
-            '_1_ppxf_emiremove.fits'
-        if NOT file_test( result_1 ) then begin 
+        if NOT file_test( spec_loc + 'ppxf/' + result_1 ) then begin 
             message, ' Can not find : ' + result_1 + ' !!!!'
         endif 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        ;; Second part: 4650:5120 
+        ;; Second part
         ;; H_beta, [OIII] 4959, 5007
+        result_2 = name_str + '_' + imf_index + '_2_ppxf_emirem.fits'
+        ;;
         hs_ppxf_emi_fitting, spec_file, temp_list, hvdisp_home=hvdisp_home, $
-            min_wave=4650.0, max_wave=5120.0, /spec_txt, /save_result, $
+            min_wave=wrange2[0], max_wave=wrange2[1], /spec_txt, /save_result, $
             prefix=imf_index + '_2', /debug
-        result_2 = spec_loc + name_str + '_' + imf_index + $
-            '_2_ppxf_emiremove.fits'
-        if NOT file_test( result_2 ) then begin 
+        if NOT file_test( spec_loc + 'ppxf/' + result_2 ) then begin 
             message, ' Can not find : ' + result_2 + ' !!!!'
         endif 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        ;; Third part: 6100:7000 
+        ;; Third part
         ;; [OI] 6300; H_alpha, [NII], and [SII]
+        result_3 = name_str + '_' + imf_index + '_3_ppxf_emirem.fits'
+        ;;
         hs_ppxf_emi_fitting, spec_file, temp_list, hvdisp_home=hvdisp_home, $
-            min_wave=6100.0, max_wave=7000.0, /spec_txt, /save_result, $
+            min_wave=wrange3[0], max_wave=wrange3[1], /spec_txt, /save_result, $
             prefix=imf_index + '_3', /debug
-        result_3 = spec_loc + name_str + '_' + imf_index + $
-            '_3_ppxf_emiremove.fits'
-        if NOT file_test( result_3 ) then begin 
+        if NOT file_test( spec_loc + 'ppxf/' + result_3 ) then begin 
             message, ' Can not find : ' + result_3 + ' !!!!'
         endif 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1322,15 +1394,58 @@ pro hs_ppxf_emi_remove, spec_file, hvdisp_home=hvdisp_home
         res_arr[ *, ii ] = flux_res
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        ;; Full spectrum fitting
+        result_f = name_str + '_' + imf_index + '_f_ppxf_emirem.fits'
+        ;;
+        hs_ppxf_emi_fitting, spec_file, temp_list, hvdisp_home=hvdisp_home, $
+            min_wave=wrange4[0], max_wave=wrange4[1], /spec_txt, /save_result, $
+            prefix=imf_index + '_f', /debug
+        if NOT file_test( spec_loc + 'ppxf/' + result_f ) then begin 
+            message, ' Can not find : ' + result_f + ' !!!!'
+        endif 
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        ;; Get the emission line subtraction file 
+        hs_ppxf_emi_subfull, spec_loc, name_str, imf_index, $
+            flux_sub_full, flux_res_full, hvdisp_home=hvdisp_home 
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        sub_ful[ *, ii ] = flux_sub_full
+        res_ful[ *, ii ] = flux_res_full
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
     endfor
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    fits_temp  = spec_loc + name_str + '_ppxf_emirem.fits'
-    struc_temp = { wave:wave, flux:flux, sub_arr:sub_arr, res_arr:res_arr }
+    ;; PLOT A
+    fits_temp_a  = spec_loc + 'ppxf/' + name_str + '_ppxf_emirem_a.fits'
+    struc_temp_a = { wave:wave, flux:flux, sub_arr:sub_arr, res_arr:res_arr }
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    mwrfits, struc_temp, fits_temp, /create 
+    mwrfits, struc_temp_a, fits_temp_a, /create 
     ;; Make the comparison plot
-    make_compare_plot, fits_temp, spec_loc, hvdisp_home=hvdisp_home
+    make_compare_plot, fits_temp_a, spec_loc, hvdisp_home=hvdisp_home
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; PLOT B
+    print, 'XXXXXX'
+    help, sub_arr 
+    help, sub_ful 
+    print, 'XXXXXX'
+    fits_temp_b  = spec_loc + 'ppxf/' + name_str + '_ppxf_emirem_b.fits'
+    struc_temp_b = { wave:wave, flux:flux, sub_arr:sub_ful, res_arr:res_ful }
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    mwrfits, struc_temp_b, fits_temp_b, /create 
+    ;; Make the comparison plot
+    make_compare_plot, fits_temp_b, spec_loc, hvdisp_home=hvdisp_home
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; PLOT C
+    plot_c = name_str + '_ppxf_emirem_c.eps'
+    make_compare_plot, fits_temp_a, spec_loc, hvdisp_home=hvdisp_home, $
+        second_file=fits_temp_b, plot_name=plot_c
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 end 
@@ -1340,41 +1455,34 @@ end
 pro ppxf_emi_remove_test
 
     ;spec_test = '/Volumes/Astro1/data/hvdisp/coadd/z0_s1k/z0_s1k_robust.txt'
+    spec_test = '/media/hs/Astro1/data/hvdisp/coadd/z0_s1k/z0_s1k_robust.txt'
 
-    ;hs_ppxf_emi_remove, spec_test
+    hs_ppxf_emi_remove, spec_test
     
-    fits_temp = '/Volumes/Astro1/data/hvdisp/coadd/z0_s1k/z0_s1k_robust_ppxf_emirem.fits'
-    spec_loc  = '/Volumes/Astro1/data/hvdisp/coadd/z0_s1k/'
-    make_compare_plot, fits_temp, spec_loc
+    ;fits_temp = '/Volumes/Astro1/data/hvdisp/coadd/z0_s1k/z0_s1k_robust_ppxf_emirem.fits'
+    ;spec_loc  = '/Volumes/Astro1/data/hvdisp/coadd/z0_s1k/'
+    ;fits_temp   = '/media/hs/Astro1/data/hvdisp/coadd/z0_s1k/ppxf/z0_s1k_robust_ppxf_emirem_a.fits'
+    ;fits_second = '/media/hs/Astro1/data/hvdisp/coadd/z0_s1k/ppxf/z0_s1k_robust_ppxf_emirem_b.fits'
+    ;spec_loc  = '/media/hs/Astro1/data/hvdisp/coadd/z0_s1k/'
+    ;make_compare_plot, fits_temp, spec_loc, second_file=fits_second
 
-    ;location = '/home/hs/Desktop/stack/spec/'
-
-    ;hs_ppxf_emi_remove, 'z0_s8d_avg.txt', location=location
-    ;hs_ppxf_emi_remove, 'z0_s1d_avg.txt', location=location
-    
-    ;hs_ppxf_emi_subtract, 'z0_s8d_avg', 'un13', location=location
-
-    ;make_compare_plot, 'z0_s8d_avg_ppxf_emirem.fits'
-    
-    ;hs_ppxf_emi_full, 'z0_s8d_avg.txt', location=location  
-
-
-;;    hs_ppxf_emi_fitting, 'z0_s8d_avg.txt', 'mius_unmix.lis', $
-;;        min_wave=3900.0, max_wave=4520.0, $
-;;        /spec_txt, location='/home/hs/Desktop/stack/spec/', $
-;;        /save_result, /debug, prefix='part1'
-;;
-;;    hs_ppxf_emi_fitting, 'z0_s8d_avg.txt', 'mius_unmix.lis', $
-;;        min_wave=4650.0, max_wave=5120.0, $
-;;        /spec_txt, location='/home/hs/Desktop/stack/spec/', $
-;;        /save_result, /debug, prefix='part2'
-;;
-;;    hs_ppxf_emi_fitting, 'z0_s8d_avg.txt', 'mius_unmix.lis', $
-;;        min_wave=6100, max_wave=7000.0, $
-;;        /spec_txt, location='/home/hs/Desktop/stack/spec/', $
-;;        /save_result, /debug, prefix='part3'
-
-        ;min_wave=6100.0, max_wave=6900.0, $
-        ;min_wave=3920.0, max_wave=7350.0, $
 end 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; TODO: make it a separate file 
+pro list_ppxf_emi_remove, list 
+
+    readcol, list, spec, format='A', comment='#', delimiter=' ', /silent 
+    n_spec = n_elements( spec ) 
+
+    for ii = 0, ( n_spec - 1 ), 1 do begin 
+
+        spec_file = strcompress( spec[ ii ], /remove_all ) + '.txt'
+
+        hs_ppxf_emi_remove, spec_file
+
+    endfor 
+
+end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
