@@ -267,7 +267,7 @@ pro make_compare_plot, fits_file, spec_loc, plot_name=plot_name, $
     endelse
     ;; Color list 
     color_file = loc_lis + 'hs_color.txt'
-    color_list = [ 'HS1', 'HS2', 'HS3', 'HS4', 'HS5', 'HS6' ]
+    color_list = [ 'HORG1', 'HRED1', 'HTAN1', 'HBLU2', 'HBLU1', 'HGRN1' ]
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1287,7 +1287,7 @@ pro hs_ppxf_emi_remove, spec_file, hvdisp_home=hvdisp_home, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Set up the wavelength ranges for fitting
     if NOT keyword_set( wrange1 ) then begin 
-        wrange1 = [ 4010.0, 4750.0 ]
+        wrange1 = [ 4020.0, 4900.0 ]
     endif else begin 
         if ( n_elements( wrange1 ) NE 2 ) then begin 
             print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
@@ -1299,7 +1299,7 @@ pro hs_ppxf_emi_remove, spec_file, hvdisp_home=hvdisp_home, $
         endelse 
     endelse
     if NOT keyword_set( wrange2 ) then begin 
-        wrange2 = [ 4620.0, 5120.0 ]
+        wrange2 = [ 4750.0, 5090.0 ]
     endif else begin 
         if ( n_elements( wrange2 ) NE 2 ) then begin 
             print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
@@ -1311,7 +1311,7 @@ pro hs_ppxf_emi_remove, spec_file, hvdisp_home=hvdisp_home, $
         endelse 
     endelse
     if NOT keyword_set( wrange3 ) then begin 
-        wrange3 = [ 6100.0, 7000.0 ]
+        wrange3 = [ 6100.0, 6850.0 ]
     endif else begin 
         if ( n_elements( wrange3 ) NE 2 ) then begin 
             print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
@@ -1323,7 +1323,7 @@ pro hs_ppxf_emi_remove, spec_file, hvdisp_home=hvdisp_home, $
         endelse 
     endelse
     if NOT keyword_set( wrange4 ) then begin 
-        wrange4 = [ 4002, 7050.0 ]
+        wrange4 = [ 4030.0, 6850.0 ]
     endif else begin 
         if ( n_elements( wrange4 ) NE 2 ) then begin 
             print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
@@ -1429,10 +1429,6 @@ pro hs_ppxf_emi_remove, spec_file, hvdisp_home=hvdisp_home, $
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; PLOT B
-    print, 'XXXXXX'
-    help, sub_arr 
-    help, sub_ful 
-    print, 'XXXXXX'
     fits_temp_b  = spec_loc + 'ppxf/' + name_str + '_ppxf_emirem_b.fits'
     struc_temp_b = { wave:wave, flux:flux, sub_arr:sub_ful, res_arr:res_ful }
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1456,6 +1452,7 @@ pro ppxf_emi_remove_test
 
     ;spec_test = '/Volumes/Astro1/data/hvdisp/coadd/z0_s1k/z0_s1k_robust.txt'
     spec_test = '/media/hs/Astro1/data/hvdisp/coadd/z0_s1k/z0_s1k_robust.txt'
+    ;spec_test = '/media/hs/Astro1/data/hvdisp/coadd/z1_s7l/z1_s7l_robust.txt'
 
     hs_ppxf_emi_remove, spec_test
     
