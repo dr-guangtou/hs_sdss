@@ -17,16 +17,17 @@
 ;             Song Huang, 2014/06/05 - First  version 
 ;             Song Huang, 2014/06/12 - Second version 
 ;             Song Huang, 2014/06/13 - Third  version 
+;             Song Huang, 2014/06/14 - Change color scheme; Allow .txt spectra 
 ;
 ;-
 ; CATEGORY:    HS_SDSS
 ;------------------------------------------------------------------------------
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-pro hs_setup_miuscat_library, temp_list, velscale, fwhm_data, fwhm_libr, $ 
+pro hs_setup_ssp_library, temp_list, velscale, fwhm_data, fwhm_libr, $ 
     stellar_templates, wave_range_temp, wave_log_temp, $ 
     lib_location=lib_location, n_models=n_models, quiet=quiet, $
-    min_temp=min_temp, max_temp=max_temp
+    min_temp=min_temp, max_temp=max_temp, ssp_txt=ssp_txt
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     on_error, 2
@@ -35,8 +36,12 @@ pro hs_setup_miuscat_library, temp_list, velscale, fwhm_data, fwhm_libr, $
     if keyword_set( lib_location ) then begin 
         lib_location = strcompress( lib_location, /remove_all ) 
     endif else begin 
-        hvdisp_location, hvdisp_home, data_home, mius_home=mius_home
-        lib_location = mius_home
+        hvdisp_location, hvdisp_home, data_home
+        if keyword_set( ssp_txt ) then begin 
+            lib_location = data_home + 'lib/base/'
+        endif else begin 
+            lib_location = data_home + 'lib/miuscat/'
+        endelse
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     fwhm_data = float( fwhm_data )
@@ -59,10 +64,19 @@ pro hs_setup_miuscat_library, temp_list, velscale, fwhm_data, fwhm_libr, $
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Read in the first one for wavelength range 
-    fits_read, spec_models[0], flux_temp, head_temp 
-    spec_samp = sxpar( head_temp, 'CDELT1' )
-    wave_range_temp = sxpar( head_temp, 'CRVAL1' ) + [ 0d, $
-        sxpar( head_temp, 'CDELT1' ) * ( sxpar( head_temp, 'NAXIS1' ) - 1d ) ]
+    if keyword_set( ssp_txt ) then begin 
+        readcol, spec_models[0], wave_temp, flux_temp, format='F,D', $
+            delimiter=' ', comment='#', /silent
+        spec_samp = ( wave_temp[1] - wave_temp[0] )
+        wave_range_temp = [ wave_temp[0], $
+            wave_temp[ n_elements( wave_temp ) - 1 ] ]
+    endif else begin 
+        fits_read, spec_models[0], flux_temp, head_temp 
+        spec_samp = sxpar( head_temp, 'CDELT1' )
+        wave_range_temp = sxpar( head_temp, 'CRVAL1' ) + [ 0d, $
+            sxpar( head_temp, 'CDELT1' ) * $
+            ( sxpar( head_temp, 'NAXIS1' ) - 1d ) ]
+    endelse
     ;; Log-rebin the SSP spectrum 
     log_rebin, wave_range_temp, flux_temp, flux_log_temp, wave_log_temp, $
         velscale=velscale 
@@ -103,7 +117,12 @@ pro hs_setup_miuscat_library, temp_list, velscale, fwhm_data, fwhm_libr, $
             print, '  Read in : ' + spec_models[ kk] + '  !! '
         endif 
         ;;
-        fits_read, spec_models[ kk ], flux_model
+        if keyword_set( ssp_txt ) then begin 
+            readcol, spec_models[ kk ], wave_model, flux_model, format='F,D', $
+                delimiter=' ', comment='#', /silent
+        endif else begin 
+            fits_read, spec_models[ kk ], flux_model
+        endelse
         ;;
         if ( do_convolve EQ 1 ) then begin 
             flux_model = convol( flux_model, lsf ) 
@@ -258,16 +277,17 @@ pro make_compare_plot, fits_file, spec_loc, plot_name=plot_name, $
     ;; Make a figure to compare the results
     if NOT keyword_set( plot_name ) then begin 
         if ( plot_second EQ 1) then begin 
-            compare_plot = spec_loc + name_str + '_both.eps' 
+            compare_plot = spec_loc + 'ppxf/' + name_str + '_both.eps' 
         endif else begin 
-            compare_plot = spec_loc + name_str + '.eps' 
+            compare_plot = spec_loc + 'ppxf/' + name_str + '.eps' 
         endelse
     endif else begin 
-        compare_plot = spec_loc + strcompress( plot_name, /remove_all ) 
+        compare_plot = spec_loc + 'ppxf/' + $
+            strcompress( plot_name, /remove_all ) 
     endelse
     ;; Color list 
     color_file = loc_lis + 'hs_color.txt'
-    color_list = [ 'HORG1', 'HRED1', 'HTAN1', 'HBLU2', 'HBLU1', 'HGRN1' ]
+    color_list = [ 'HRED1', 'HTAN1', 'HBLU2', 'HGRN1', 'HORG1', 'HBLU1' ]
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -568,8 +588,8 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-pro hs_ppxf_emi_subfull, spec_loc, name_str, imf_index, flux_sub, flux_res, $
-    hvdisp_home=hvdisp_home, plot=plot
+pro hs_ppxf_emi_subfull, spec_loc, name_str, ssplib_index, flux_sub, flux_res, $
+    hvdisp_home=hvdisp_home, plot=plot, lib_comb=lib_comb
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if NOT keyword_set( hvdisp_home ) then begin 
@@ -588,8 +608,13 @@ pro hs_ppxf_emi_subfull, spec_loc, name_str, imf_index, flux_sub, flux_res, $
     n_pixel = n_elements( wave )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Collect all the three fitting result files
-    f_file = spec_loc + 'ppxf/' + name_str + '_' + imf_index + $
-        '_f_ppxf_emirem.fits'
+    if keyword_set( lib_comb ) then begin 
+        f_file = spec_loc + 'ppxf/' + name_str + '_' + ssplib_index + $
+            '_f_ppxf_emirem.fits'
+    endif else begin 
+        f_file = spec_loc + 'ppxf/' + name_str + '_' + ssplib_index + $
+            '_f_ppxf_emirem.fits'
+    endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Read in the results
     f_data = mrdfits( f_file, 1, /silent ) 
@@ -639,7 +664,8 @@ pro hs_ppxf_emi_subfull, spec_loc, name_str, imf_index, flux_sub, flux_res, $
         
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Save the results to a new txt file  
-    output = spec_loc + name_str + '_' + imf_index + '_ppxf_emirem_b.txt' 
+    output = spec_loc + 'ppxf/' + name_str + '_' + ssplib_index + $
+        '_ppxf_emirem_b.txt' 
     openw,  lun, output, width=500, /get_lun 
     printf, lun, '#Wavelength  ,  Flux  ,  Flux_Sub  ,  Emiline  '
     for jj = 0, ( n_pixel - 1 ), 1 do begin 
@@ -654,8 +680,8 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-pro hs_ppxf_emi_subtract, spec_loc, name_str, imf_index, flux_sub, flux_res, $
-    hvdisp_home=hvdisp_home, plot=plot
+pro hs_ppxf_emi_subtract, spec_loc, name_str, ssplib_index, flux_sub, flux_res, $
+    hvdisp_home=hvdisp_home, plot=plot, lib_comb=lib_comb
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if NOT keyword_set( hvdisp_home ) then begin 
@@ -674,12 +700,21 @@ pro hs_ppxf_emi_subtract, spec_loc, name_str, imf_index, flux_sub, flux_res, $
     n_pixel = n_elements( wave )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Collect all the three fitting result files
-    file1 = spec_loc + 'ppxf/' + name_str + '_' + imf_index + $
-        '_1_ppxf_emirem.fits'
-    file2 = spec_loc + 'ppxf/' + name_str + '_' + imf_index + $
-        '_2_ppxf_emirem.fits'
-    file3 = spec_loc + 'ppxf/' + name_str + '_' + imf_index + $
-        '_3_ppxf_emirem.fits'
+    if keyword_set( lib_comb ) then begin 
+        file1 = spec_loc + 'ppxf/' + name_str + '_' + ssplib_index + $
+            '_1_ppxf_emirem.fits'
+        file2 = spec_loc + 'ppxf/' + name_str + '_' + ssplib_index + $
+            '_2_ppxf_emirem.fits'
+        file3 = spec_loc + 'ppxf/' + name_str + '_' + ssplib_index + $
+            '_3_ppxf_emirem.fits'
+    endif else begin 
+        file1 = spec_loc + 'ppxf/' + name_str + '_' + ssplib_index + $
+            '_1_ppxf_emirem.fits'
+        file2 = spec_loc + 'ppxf/' + name_str + '_' + ssplib_index + $
+            '_2_ppxf_emirem.fits'
+        file3 = spec_loc + 'ppxf/' + name_str + '_' + ssplib_index + $
+            '_3_ppxf_emirem.fits'
+    endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Read in the results
     data1 = mrdfits( file1, 1, /silent ) 
@@ -743,7 +778,9 @@ pro hs_ppxf_emi_subtract, spec_loc, name_str, imf_index, flux_sub, flux_res, $
     endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Save the results to a new txt file  
-    output = spec_loc + name_str + '_' + imf_index + '_ppxf_emirem_a.txt' 
+    output = spec_loc + 'ppxf/' + name_str + '_' + ssplib_index + $
+        '_ppxf_emirem_a.txt' 
+    ;;;;;
     openw,  lun, output, width=500, /get_lun 
     printf, lun, '#Wavelength  ,  Flux  ,  Flux_Sub  ,  Emiline  '
     for jj = 0, ( n_pixel - 1 ), 1 do begin 
@@ -765,7 +802,7 @@ pro hs_ppxf_emi_fitting, spec_file, temp_list, $
     plot_result=plot_result, save_result=save_result, $ 
     vel_guess=vel_guess,     sig_guess=sig_guess, $
     sn_ratio=sn_ratio, mdegree=mdegree, n_moments=n_moments, $
-    quiet=quiet, debug=debug, $
+    quiet=quiet, debug=debug, ssp_txt=ssp_txt, $
     prefix=prefix, save_temp=save_temp, result_file=result_file
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -928,9 +965,17 @@ pro hs_ppxf_emi_fitting, spec_file, temp_list, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ssp_list = loc_templis + strcompress( temp_list, /remove_all ) 
     ;;
-    hs_setup_miuscat_library, ssp_list, velscale, fwhm_data, fwhm_libr, $
-        stellar_templates, wave_range_temp, wave_log_temp, n_models=n_models, $ 
-        min_temp=min_wave_temp, max_temp=max_wave_temp, /quiet
+    if keyword_set( ssp_txt ) then begin 
+        hs_setup_ssp_library, ssp_list, velscale, fwhm_data, fwhm_libr, $
+            stellar_templates, wave_range_temp, wave_log_temp, $
+            n_models=n_models, min_temp=min_wave_temp, max_temp=max_wave_temp, $
+            /quiet, /ssp_txt
+    endif else begin 
+        hs_setup_ssp_library, ssp_list, velscale, fwhm_data, fwhm_libr, $
+            stellar_templates, wave_range_temp, wave_log_temp, $
+            n_models=n_models, min_temp=min_wave_temp, max_temp=max_wave_temp, $
+            /quiet
+    endelse
     ;;
     wave_lin_temp = exp( wave_log_temp )
     n_pixel_temp  = n_elements( wave_lin_temp )
@@ -1061,7 +1106,13 @@ pro hs_ppxf_emi_fitting, spec_file, temp_list, $
         if keyword_set( result_file ) then begin 
             result_file = spec_loc + 'ppxf/' + result_file 
         endif else begin 
-            result_file = spec_loc + 'ppxf/' + name_str + '_ppxf_emirem.fits' 
+            if keyword_set( ssp_txt ) then begin 
+                result_file = spec_loc + 'ppxf/' + name_str + $
+                    '_ppxf_emirem.fits' 
+            endif else begin 
+                result_file = spec_loc + 'ppxf/' + name_str + $
+                    '_ppxf_emirem.fits' 
+            endelse
         endelse
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         print, '###############################################################'
@@ -1127,7 +1178,11 @@ pro hs_ppxf_emi_fitting, spec_file, temp_list, $
     if keyword_set( debug ) then begin 
 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        result_plot = spec_loc + 'ppxf/' + name_str + '_ppxf_debug.eps' 
+        if keyword_set( ssp_txt ) then begin 
+            result_plot = spec_loc + 'ppxf/' + name_str + '_ppxf_debug.eps' 
+        endif else begin 
+            result_plot = spec_loc + 'ppxf/' + name_str + '_ppxf_debug.eps' 
+        endelse
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         mydevice = !d.name 
         !p.font=1
@@ -1216,7 +1271,8 @@ end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 pro hs_ppxf_emi_remove, spec_file, hvdisp_home=hvdisp_home, $
-    wrange1=wrange1, wrange2=wrange2, wrange3=wrange3, wrange4=wrange4
+    wrange1=wrange1, wrange2=wrange2, wrange3=wrange3, wrange4=wrange4, $ 
+    lib_comb=lib_comb 
   
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     on_error, 2
@@ -1271,8 +1327,16 @@ pro hs_ppxf_emi_remove, spec_file, hvdisp_home=hvdisp_home, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; The list of stellar templates
     ;temp_files = [ 'mius_ku13.lis', 'mius_un18.lis' ]
-    temp_files = [ 'mius_un08.lis', 'mius_ku13.lis', 'mius_un13.lis', $
-                   'mius_un18.lis', 'mius_un20.lis', 'mius_unmix.lis' ]
+    if NOT keyword_set( lib_comb ) then begin 
+        ;; Maybe do not need so many tests
+        ;temp_files = [ 'mius_un08.lis', 'mius_ku13.lis', 'mius_un13.lis', $
+        ;    'mius_un18.lis', 'mius_un20.lis', 'mius_unmix.lis' ]
+        temp_files = [ 'mius_ku13.lis', 'mius_un13.lis', $
+                       'mius_un18.lis', 'mius_imix.lis' ]
+    endif else begin
+        temp_files = [ 'comb_krch.lis', 'comb_salp.lis', $
+                       'comb_bthv.lis', 'comb_imix.lis' ]
+    endelse
     n_temp = n_elements( temp_files ) 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Three files for each template 
@@ -1287,7 +1351,7 @@ pro hs_ppxf_emi_remove, spec_file, hvdisp_home=hvdisp_home, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Set up the wavelength ranges for fitting
     if NOT keyword_set( wrange1 ) then begin 
-        wrange1 = [ 4020.0, 4900.0 ]
+        wrange1 = [ 4020.0, 4490.0 ]
     endif else begin 
         if ( n_elements( wrange1 ) NE 2 ) then begin 
             print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
@@ -1299,7 +1363,7 @@ pro hs_ppxf_emi_remove, spec_file, hvdisp_home=hvdisp_home, $
         endelse 
     endelse
     if NOT keyword_set( wrange2 ) then begin 
-        wrange2 = [ 4750.0, 5090.0 ]
+        wrange2 = [ 4760.0, 5090.0 ]
     endif else begin 
         if ( n_elements( wrange2 ) NE 2 ) then begin 
             print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
@@ -1341,19 +1405,28 @@ pro hs_ppxf_emi_remove, spec_file, hvdisp_home=hvdisp_home, $
 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         temp_list = strcompress( temp_files[ii], /remove_all ) 
-        temp      = strsplit( temp_list, '._', /extract ) 
+        temp      = strsplit( temp_list, '.', /extract ) 
         ;; Index for the IMF choice
-        imf_index = temp[1] 
+        ssplib_index = temp[0] 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; First part
         ;; H_delta & H_gamma
-        result_1 = name_str + '_' + imf_index + '_1_ppxf_emirem.fits'
-        ;;
-        hs_ppxf_emi_fitting, spec_file, temp_list, hvdisp_home=hvdisp_home, $
-            min_wave=wrange1[0], max_wave=wrange1[1], /spec_txt, /save_result, $
-            prefix=imf_index + '_1', /debug
+        if keyword_set( lib_comb ) then begin 
+            result_1 = name_str + '_' + ssplib_index + '_1_ppxf_emirem.fits'
+            hs_ppxf_emi_fitting, spec_file, temp_list, hvdisp_home=hvdisp_home, $
+                min_wave=wrange1[0], max_wave=wrange1[1], $
+                /ssp_txt, /spec_txt, /save_result, $
+                prefix=ssplib_index + '_1', /debug
+        endif else begin 
+            result_1 = name_str + '_' + ssplib_index + '_1_ppxf_emirem.fits'
+            hs_ppxf_emi_fitting, spec_file, temp_list, hvdisp_home=hvdisp_home, $
+                min_wave=wrange1[0], max_wave=wrange1[1], $
+                /spec_txt, /save_result, $
+                prefix=ssplib_index + '_1', /debug
+        endelse
+        ;;;;
         if NOT file_test( spec_loc + 'ppxf/' + result_1 ) then begin 
             message, ' Can not find : ' + result_1 + ' !!!!'
         endif 
@@ -1362,11 +1435,20 @@ pro hs_ppxf_emi_remove, spec_file, hvdisp_home=hvdisp_home, $
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; Second part
         ;; H_beta, [OIII] 4959, 5007
-        result_2 = name_str + '_' + imf_index + '_2_ppxf_emirem.fits'
-        ;;
-        hs_ppxf_emi_fitting, spec_file, temp_list, hvdisp_home=hvdisp_home, $
-            min_wave=wrange2[0], max_wave=wrange2[1], /spec_txt, /save_result, $
-            prefix=imf_index + '_2', /debug
+        if keyword_set( lib_comb ) then begin 
+            result_2 = name_str + '_' + ssplib_index + '_2_ppxf_emirem.fits'
+            hs_ppxf_emi_fitting, spec_file, temp_list, hvdisp_home=hvdisp_home, $
+                min_wave=wrange2[0], max_wave=wrange2[1], $
+                /ssp_txt, /spec_txt, /save_result, $
+                prefix=ssplib_index + '_2', /debug
+        endif else begin 
+            result_2 = name_str + '_' + ssplib_index + '_2_ppxf_emirem.fits'
+            hs_ppxf_emi_fitting, spec_file, temp_list, hvdisp_home=hvdisp_home, $
+                min_wave=wrange2[0], max_wave=wrange2[1], $
+                /spec_txt, /save_result, $
+                prefix=ssplib_index + '_2', /debug
+        endelse
+        ;;;;
         if NOT file_test( spec_loc + 'ppxf/' + result_2 ) then begin 
             message, ' Can not find : ' + result_2 + ' !!!!'
         endif 
@@ -1375,11 +1457,19 @@ pro hs_ppxf_emi_remove, spec_file, hvdisp_home=hvdisp_home, $
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; Third part
         ;; [OI] 6300; H_alpha, [NII], and [SII]
-        result_3 = name_str + '_' + imf_index + '_3_ppxf_emirem.fits'
-        ;;
-        hs_ppxf_emi_fitting, spec_file, temp_list, hvdisp_home=hvdisp_home, $
-            min_wave=wrange3[0], max_wave=wrange3[1], /spec_txt, /save_result, $
-            prefix=imf_index + '_3', /debug
+        if keyword_set( lib_comb ) then begin 
+            result_3 = name_str + '_' + ssplib_index + '_3_ppxf_emirem.fits'
+            hs_ppxf_emi_fitting, spec_file, temp_list, hvdisp_home=hvdisp_home, $
+                min_wave=wrange3[0], max_wave=wrange3[1], $
+                /ssp_txt, /spec_txt, /save_result, $
+                prefix=ssplib_index + '_3', /debug
+        endif else begin 
+            result_3 = name_str + '_' + ssplib_index + '_3_ppxf_emirem.fits'
+            hs_ppxf_emi_fitting, spec_file, temp_list, hvdisp_home=hvdisp_home, $
+                min_wave=wrange3[0], max_wave=wrange3[1], $
+                /spec_txt, /save_result, $
+                prefix=ssplib_index + '_3', /debug
+        endelse
         if NOT file_test( spec_loc + 'ppxf/' + result_3 ) then begin 
             message, ' Can not find : ' + result_3 + ' !!!!'
         endif 
@@ -1387,8 +1477,13 @@ pro hs_ppxf_emi_remove, spec_file, hvdisp_home=hvdisp_home, $
 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; Get the emission line subtraction file 
-        hs_ppxf_emi_subtract, spec_loc, name_str, imf_index, $
-            flux_sub, flux_res, hvdisp_home=hvdisp_home 
+        if keyword_set( lib_comb ) then begin 
+            hs_ppxf_emi_subtract, spec_loc, name_str, ssplib_index, $
+                flux_sub, flux_res, hvdisp_home=hvdisp_home, /lib_comb 
+        endif else begin 
+            hs_ppxf_emi_subtract, spec_loc, name_str, ssplib_index, $
+                flux_sub, flux_res, hvdisp_home=hvdisp_home 
+        endelse
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         sub_arr[ *, ii ] = flux_sub
         res_arr[ *, ii ] = flux_res
@@ -1396,11 +1491,19 @@ pro hs_ppxf_emi_remove, spec_file, hvdisp_home=hvdisp_home, $
 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; Full spectrum fitting
-        result_f = name_str + '_' + imf_index + '_f_ppxf_emirem.fits'
-        ;;
-        hs_ppxf_emi_fitting, spec_file, temp_list, hvdisp_home=hvdisp_home, $
-            min_wave=wrange4[0], max_wave=wrange4[1], /spec_txt, /save_result, $
-            prefix=imf_index + '_f', /debug
+        if keyword_set( lib_comb ) then begin 
+            result_f = name_str + '_' + ssplib_index + '_f_ppxf_emirem.fits'
+            hs_ppxf_emi_fitting, spec_file, temp_list, hvdisp_home=hvdisp_home, $
+                min_wave=wrange4[0], max_wave=wrange4[1], $
+                /ssp_txt, /spec_txt, /save_result, $
+                prefix=ssplib_index + '_f', /debug
+        endif else begin 
+            result_f = name_str + '_' + ssplib_index + '_f_ppxf_emirem.fits'
+            hs_ppxf_emi_fitting, spec_file, temp_list, hvdisp_home=hvdisp_home, $
+                min_wave=wrange4[0], max_wave=wrange4[1], $
+                /spec_txt, /save_result, $
+                prefix=ssplib_index + '_f', /debug
+        endelse
         if NOT file_test( spec_loc + 'ppxf/' + result_f ) then begin 
             message, ' Can not find : ' + result_f + ' !!!!'
         endif 
@@ -1408,8 +1511,13 @@ pro hs_ppxf_emi_remove, spec_file, hvdisp_home=hvdisp_home, $
 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; Get the emission line subtraction file 
-        hs_ppxf_emi_subfull, spec_loc, name_str, imf_index, $
-            flux_sub_full, flux_res_full, hvdisp_home=hvdisp_home 
+        if keyword_set( lib_comb ) then begin 
+            hs_ppxf_emi_subfull, spec_loc, name_str, ssplib_index, $
+                flux_sub_full, flux_res_full, hvdisp_home=hvdisp_home, /lib_comb 
+        endif else begin 
+            hs_ppxf_emi_subfull, spec_loc, name_str, ssplib_index, $
+                flux_sub_full, flux_res_full, hvdisp_home=hvdisp_home
+        endelse
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         sub_ful[ *, ii ] = flux_sub_full
         res_ful[ *, ii ] = flux_res_full
@@ -1419,27 +1527,45 @@ pro hs_ppxf_emi_remove, spec_file, hvdisp_home=hvdisp_home, $
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; PLOT A
-    fits_temp_a  = spec_loc + 'ppxf/' + name_str + '_ppxf_emirem_a.fits'
+    if keyword_set( lib_comb ) then begin 
+        fits_temp_a = spec_loc + 'ppxf/' + name_str + '_comb_ppxf_emirem_a.fits'
+        plot_a      = name_str + '_comb_ppxf_emirem_a.eps'
+    endif else begin 
+        fits_temp_a = spec_loc + 'ppxf/' + name_str + '_mius_ppxf_emirem_a.fits'
+        plot_a      = name_str + '_mius_ppxf_emirem_a.eps'
+    endelse
     struc_temp_a = { wave:wave, flux:flux, sub_arr:sub_arr, res_arr:res_arr }
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     mwrfits, struc_temp_a, fits_temp_a, /create 
     ;; Make the comparison plot
-    make_compare_plot, fits_temp_a, spec_loc, hvdisp_home=hvdisp_home
+    make_compare_plot, fits_temp_a, spec_loc, hvdisp_home=hvdisp_home, $
+        plot_name=plot_a
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; PLOT B
-    fits_temp_b  = spec_loc + 'ppxf/' + name_str + '_ppxf_emirem_b.fits'
+    if keyword_set( lib_comb ) then begin 
+        fits_temp_b = spec_loc + 'ppxf/' + name_str + '_comb_ppxf_emirem_b.fits'
+        plot_b      = name_str + '_comb_ppxf_emirem_b.eps'
+    endif else begin 
+        fits_temp_b = spec_loc + 'ppxf/' + name_str + '_mius_ppxf_emirem_b.fits'
+        plot_b      = name_str + '_mius_ppxf_emirem_b.eps'
+    endelse
     struc_temp_b = { wave:wave, flux:flux, sub_arr:sub_ful, res_arr:res_ful }
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     mwrfits, struc_temp_b, fits_temp_b, /create 
     ;; Make the comparison plot
-    make_compare_plot, fits_temp_b, spec_loc, hvdisp_home=hvdisp_home
+    make_compare_plot, fits_temp_b, spec_loc, hvdisp_home=hvdisp_home, $
+        plot_name=plot_b
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; PLOT C
-    plot_c = name_str + '_ppxf_emirem_c.eps'
+    if keyword_set( lib_comb ) then begin 
+        plot_c = name_str + '_comb_ppxf_emirem_c.eps'
+    endif else begin 
+        plot_c = name_str + '_mius_ppxf_emirem_c.eps'
+    endelse
     make_compare_plot, fits_temp_a, spec_loc, hvdisp_home=hvdisp_home, $
         second_file=fits_temp_b, plot_name=plot_c
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1448,38 +1574,45 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-pro ppxf_emi_remove_test
+pro ppxf_emi_remove_test, hvdisp_home=hvdisp_home, $
+    test_emi=test_emi, test_plot=test_plot
 
-    ;spec_test = '/Volumes/Astro1/data/hvdisp/coadd/z0_s1k/z0_s1k_robust.txt'
-    spec_test = '/media/hs/Astro1/data/hvdisp/coadd/z0_s1k/z0_s1k_robust.txt'
-    ;spec_test = '/media/hs/Astro1/data/hvdisp/coadd/z1_s7l/z1_s7l_robust.txt'
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    if NOT keyword_set( hvdisp_home ) then begin 
+        hvdisp_location, hvdisp_home, data_home
+    endif else begin 
+        hvdisp_home = strcompress( hvdisp_home, /remove_all ) 
+    endelse
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    loc_coadd    = hvdisp_home + 'coadd/'
+    loc_indexlis = hvdisp_home + 'pro/lis/'
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-    hs_ppxf_emi_remove, spec_test
+    if keyword_set( test_emi ) then begin 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        ;; EMI_REMOVE TEST 
+        ;; Example spectrum
+        spec_1 = loc_coadd + 'z0_s1k/z0_s1k_robust.txt'
+        spec_2 = loc_coadd + 'z0_s1k/z0_s1k_median.txt'
+        spec_3 = loc_coadd + 'z3_s7l/z3_s7l_robust.txt'
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        hs_ppxf_emi_remove, spec_test
+        hs_ppxf_emi_remove, spec_test, /lib_comb
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    endif 
+
     
-    ;fits_temp = '/Volumes/Astro1/data/hvdisp/coadd/z0_s1k/z0_s1k_robust_ppxf_emirem.fits'
-    ;spec_loc  = '/Volumes/Astro1/data/hvdisp/coadd/z0_s1k/'
-    ;fits_temp   = '/media/hs/Astro1/data/hvdisp/coadd/z0_s1k/ppxf/z0_s1k_robust_ppxf_emirem_a.fits'
-    ;fits_second = '/media/hs/Astro1/data/hvdisp/coadd/z0_s1k/ppxf/z0_s1k_robust_ppxf_emirem_b.fits'
-    ;spec_loc  = '/media/hs/Astro1/data/hvdisp/coadd/z0_s1k/'
-    ;make_compare_plot, fits_temp, spec_loc, second_file=fits_second
+    if keyword_set( test_plot ) then begin 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; MAKE_COMPARE_PLOT TEST
+        fits_a   = loc_coadd + 'z0_s1k/ppxf/z0_s1k_robust_ppxf_emirem_a.fits'
+        fits_b   = loc_coadd + 'z0_s1k/ppxf/z0_s1k_robust_ppxf_emirem_b.fits'
+        spec_loc = loc_coadd + 'z0_s1k/'
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        make_compare_plot, fits_b, spec_loc
+        make_compare_plot, fits_a, spec_loc, second_file=fits_b
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    endif
 
 end 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; TODO: make it a separate file 
-pro list_ppxf_emi_remove, list 
-
-    readcol, list, spec, format='A', comment='#', delimiter=' ', /silent 
-    n_spec = n_elements( spec ) 
-
-    for ii = 0, ( n_spec - 1 ), 1 do begin 
-
-        spec_file = strcompress( spec[ ii ], /remove_all ) + '.txt'
-
-        hs_ppxf_emi_remove, spec_file
-
-    endfor 
-
-end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

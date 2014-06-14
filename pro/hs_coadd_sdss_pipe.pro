@@ -355,7 +355,7 @@ pro hs_coadd_sdss_pipe, html_list, hvdisp_home=hvdisp_home, $
             endif else begin 
                 if keyword_set( test_str ) then begin
                     hs_coadd_sdss_plot, sum_file, index_list=index_list, $ 
-                        prefix=prefix, test_str=test_str
+                        prefix=prefix
                 endif else begin 
                     hs_coadd_sdss_plot, sum_file, index_list=index_list, $ 
                         prefix=prefix

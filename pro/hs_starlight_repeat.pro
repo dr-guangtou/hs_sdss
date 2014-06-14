@@ -1,3 +1,25 @@
+; + 
+; NAME:
+;              HS_STARLIGHT_REPEAT
+;
+; PURPOSE:
+;              Repeat the same STARLIGHT run for many times 
+;
+; USAGE:
+;    hs_starlight_repeat, sl_input, n_repeat, /is_error
+;
+; OUTPUT: 
+;
+; AUTHOR:
+;             Song Huang
+;
+; HISTORY:
+;             Song Huang, 2014/06/14 - First version 
+;-
+; CATEGORY:    HS_STARLIGHT
+;------------------------------------------------------------------------------
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 pro hs_starlight_repeat, sl_input, n_repeat, is_error=is_error
 
     n_repeat = long( n_repeat )
