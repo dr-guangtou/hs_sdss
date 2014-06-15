@@ -136,70 +136,109 @@ pro hvdisp_coadd_index, coadd_list, index_list=index_list, $
     for ii = 0, ( n_spec - 1 ), 1 do begin 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         spec_input = strcompress( inputs[ ii ], /remove_all ) 
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         if NOT file_test( loc_coadd + spec_input ) then begin 
             print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
             print, ' Can not find the spectrum file : ' + spec_input + ' !!!!'
             print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
             message, ' ' 
         endif else begin  
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
             ;; Read in the spectrum 
             readcol, ( loc_coadd + spec_input ), spec_wave, spec_flux, $
                 spec_error, spec_flag, format='F,D,D,I', comment='#', $
                 delimiter=' ', /silent 
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+            temp = strsplit( spec_input, '/.', /extract )
+            spec_prefix = temp[ n_elements( temp ) - 2 ]
+            temp = strsplit( spec_input, '/', /extract )
+            spec_file   = temp[ n_elements( temp ) - 1 ]
             index_results = hs_spec_index_batch( spec_wave, spec_flux, $
                 snr=600, /toair, index_line=index_line, index_list=index_list, $
-                header_line=header_line, /silent ) 
+                header_line=header_line, /silent, prefix=spec_prefix ) 
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         endelse
-        ;;
-        temp = strsplit( spec_input,   '/', /extract )
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        temp = strsplit( spec_input, '/', /extract )
         hvdisp_index = temp[0] 
-        ;;
+        ;;; ---- Add HVDISP_INDEX ----
+        struct_add_field, index_results, 'hvdisp_index', hvdisp_index
+        struct_add_field, index_results, 'spec_index',   spec_prefix
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         temp = strsplit( hvdisp_index, '_', /extract )
-        ;;
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         red_index = temp[0] 
         strreplace, red_index, 'z', '' 
         red_value = get_red_value( red_index )
         if ( float( red_value ) LE 0.0 ) then begin 
             message, ' Something wrong with the redshift index !!'
         endif 
-        ;; 
+        ;;; ---- Add RED_INDEX and RED_VALUE ----
+        struct_add_field, index_results, 'red_index', red_index
+        struct_add_field, index_results, 'red_value', red_value
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         sig_index = strmid( temp[1], 1, 1 ) 
         sig_value = get_sig_value( sig_index )
         if ( float( sig_value ) LE 0.0 ) then begin 
             message, ' Something wrong with the velocity dispersion index !!'
         endif 
-        ;; 
+        ;;; ---- Add SIG_INDEX and SIG_VALUE ----
+        struct_add_field, index_results, 'sig_index', sig_index
+        struct_add_field, index_results, 'sig_value', sig_value
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         grp_index = strmid( temp[1], 2, 1 )
-        ;; 
+        ;;; ---- Add GRP_INDEX ----
+        struct_add_field, index_results, 'grp_index', grp_index
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         if keyword_set( suffix ) then begin 
             suffix = strcompress( suffix ) 
         endif else begin 
             suffix = 'original'
         endelse
-        ;;
-        index_line = hvdisp_index + comma + $
+        ;;; ---- Add SUFFIX ----
+        struct_add_field, index_results, 'suffix', suffix
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        index_line = hvdisp_index + comma + spec_file + comma + $
             red_index + comma + red_value + comma + $
             sig_index + comma + sig_value + comma + $
             grp_index + comma + suffix + comma + index_line
-        ;; 
         index_strarr[ ii ] = index_line
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        if ( ii EQ 0 ) then begin 
+            index_strucarr = replicate( index_results, n_spec )
+        endif 
+        index_strucarr[ ii ] = index_results
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     endfor 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     strreplace, header_line, '#', ''
-    header_line = '#hvdisp_index , red_index , redshift , sig_index , ' + $ 
-        'veldisp , grp_index , suffix , ' + header_line
+    header_line = '# hvdisp_index , spec_file, red_index , redshift , ' + $
+        'sig_index , veldisp , grp_index , suffix , ' + header_line
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; ---- Save a FITS catalog ----
+    fits_output = loc_result + output_prefix + '.fits' 
+    mwrfits, index_strucarr, fits_output, /create
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; ---- Save a CSV catalog ----
     if keyword_set( save_csv ) then begin 
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         csv_output = loc_result + output_prefix + '.csv' 
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         openw,  lun, csv_output, /get_lun, width=8000 
         printf, lun, header_line 
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         for jj = 0, ( n_spec - 1 ), 1 do begin 
             printf, lun, index_strarr[ jj ] 
         endfor 
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         close, lun 
         free_lun, lun 
     endif 
