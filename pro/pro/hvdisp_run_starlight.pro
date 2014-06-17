@@ -20,6 +20,42 @@
 ;------------------------------------------------------------------------------
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+pro hvdisp_starlight_batch, input_list, hvdisp_home=hvdisp_home 
+
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    print, '###############################################################'
+    print, ' INPUT_LIST : ' + input_list  
+    print, '###############################################################'
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    if NOT keyword_set( hvdisp_home ) then begin 
+        hvdisp_location, hvdisp_home, data_home
+    endif else begin 
+        hvdisp_home = strcompress( hvdisp_home, /remove_all ) 
+    endelse
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    loc_coadd    = hvdisp_home + 'coadd/'
+    loc_ancil    = hvdisp_home + 'pro/ancil/'
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    spawn, 'ls ' + loc_ancil + 'hvdisp_*.in', template_list 
+    n_temp = n_elements( template_list ) 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    for mm = 0, ( n_temp - 1 ), 1 do begin 
+        ;;
+        sl_template = strcompress( template_list[ mm ], /remove_all )
+        temp = strsplit( sl_template, '/', /extract )
+        sl_template = temp[ n_elements( temp ) - 1 ]
+        ;;
+        print, '###############################################################'
+        print, '  STARLIGHT Template : ' + sl_template
+        print, '###############################################################'
+        hvdisp_run_starlight, input_list, sl_template, /run_sl 
+    endfor 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    
+end
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 pro hvdisp_run_starlight, input_list, sl_template, hvdisp_home=hvdisp_home, $
     sl_command=sl_command, run_sl=run_sl
 

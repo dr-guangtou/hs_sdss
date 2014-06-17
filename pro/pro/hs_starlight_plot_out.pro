@@ -1033,35 +1033,35 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
     ;; Recuded_chi^2 name  
     xloc = left + ( xstep * 1.5 )
     yloc = upper - ( ystep * 6.0 ) 
-    label = 'Chi2/N: ' + $
-        strcompress( string( sl_struc.reduced_chi2, format='(F9.3)' ), $
+    label = 'Chi2 : ' + $
+        strcompress( string( sl_struc.total_chi2, format='(F9.3)' ), $
         /remove_all ) 
     cgText, xloc, yloc, label, charsize=3.0, charthick=9.0, $
         color=cgColor('Black'), alignment=0.0, /normal 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; Adev  
+    ;; Adev1 
     xloc = xmiddle - ( xstep * 0.2 )
     yloc = upper - ( ystep * 6.0 ) 
-    label = 'Adev: ' + $
-        strcompress( string( sl_struc.adev, format='(F9.3)' ), /remove_all ) 
+    label = 'Adev1: ' + $
+        strcompress( string( sl_struc.adev1, format='(F9.3)' ), /remove_all ) 
     cgText, xloc, yloc, label, charsize=3.0, charthick=9.0, $
         color=cgColor('Black'), alignment=0.0, /normal 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; AIC  
-    ;xloc = left + ( xstep * 1.5 )
-    ;yloc = upper - ( ystep * 7.0 ) 
-    ;label = 'AIC: ' + $
-    ;    strcompress( string( sl_struc.aic, format='(E12.5)' ), /remove_all ) 
-    ;cgText, xloc, yloc, label, charsize=2.6, charthick=9.0, $
-    ;    color=cgColor('Black'), alignment=0.0, /normal 
+    ; Adev2  
+    xloc = left + ( xstep * 1.5 )
+    yloc = upper - ( ystep * 7.0 ) 
+    label = 'Adev2: ' + $
+        strcompress( string( sl_struc.adev2, format='(F9.3)' ), /remove_all ) 
+    cgText, xloc, yloc, label, charsize=2.6, charthick=9.0, $
+        color=cgColor('Black'), alignment=0.0, /normal 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; BIC  
-    ;xloc = xmiddle - ( xstep * 0.2 )
-    ;yloc = upper - ( ystep * 7.0 ) 
-    ;label = 'BIC: ' + $
-    ;    strcompress( string( sl_struc.bic, format='(E12.5)' ), /remove_all ) 
-    ;cgText, xloc, yloc, label, charsize=2.6, charthick=9.0, $
-    ;    color=cgColor('Black'), alignment=0.0, /normal 
+    ; Delta  
+    xloc = xmiddle - ( xstep * 0.2 )
+    yloc = upper - ( ystep * 7.0 ) 
+    label = 'Delta: ' + $
+        strcompress( string( sl_struc.avg_delta, format='(E9.3)' ), /remove_all ) 
+    cgText, xloc, yloc, label, charsize=2.6, charthick=9.0, $
+        color=cgColor('Black'), alignment=0.0, /normal 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; av   
     xloc = left + ( xstep * 1.5 )
