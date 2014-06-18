@@ -155,7 +155,8 @@ function hs_coadd_sdss_median, prep_file, n_boot=n_boot, $
             /noerase, /nodata
 
         ;; Overplot interesting index 
-        hs_spec_index_over, loc_indexlis + 'hs_index_plot.lis', /center_line
+        hs_spec_index_over, loc_indexlis + 'hs_index_plot.lis', /center_line, $
+            line_center=2, color_center='TAN5'
 
         cgPlot, wave, output.min_boot, /overplot, thick=2.0, $
             color=cgColor( 'Dark Gray' )
@@ -165,10 +166,10 @@ function hs_coadd_sdss_median, prep_file, n_boot=n_boot, $
             thick=2.0, color=cgColor( 'Orange' )
         cgPlot, wave, ( output.avg_boot + output.sig_boot ), /overplot, $
             thick=2.0, color=cgColor( 'Orange' )
-        cgPlot, wave, output.avg_boot, /overplot, thick=2.5, $
-            color=cgColor( 'Red' )
-        cgPlot, wave, output.med_boot, /overplot, thick=2.0, $
+        cgPlot, wave, output.med_boot, /overplot, thick=4.0, $
             color=cgColor( 'Blue' )
+        cgPlot, wave, output.avg_boot, /overplot, thick=4.5, $
+            color=cgColor( 'Red' )
 
         ;; Label for index
         hs_spec_index_over, loc_indexlis + 'hs_index_plot.lis', /label_only

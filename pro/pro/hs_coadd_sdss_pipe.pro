@@ -27,7 +27,8 @@ pro hs_coadd_sdss_pipe, html_list, hvdisp_home=hvdisp_home, $
     create=create, post=post, avg_boot=avg_boot, $
     csigma=csigma, n_boot=n_boot, sig_cut=sig_cut, $
     blue_cut=blue_cut, red_cut=red_cut, niter=niter, nevec=nevec, $ 
-    test_str=test_str
+    test_str=test_str, new_prep=new_prep, $ 
+    sky_factor=sky_factor, f_cushion=f_cushion
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Parameters   
@@ -67,6 +68,21 @@ pro hs_coadd_sdss_pipe, html_list, hvdisp_home=hvdisp_home, $
         nevec = long( nevec ) 
     endif else begin 
         nevec    = 6
+    endelse
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Factor to reject pixels that are affected by sky emission lines 
+    if keyword_set( sky_factor ) then begin 
+        sky_factor = float( sky_factor )
+    endif else begin 
+        sky_factor = 2.0
+    endelse
+    ;; Cushion factor: define the wavelength range you want to hide at both 
+    ;;   short and long wavelength end; The smaller the value of this 
+    ;;   factor, the more you hide.  Normally 2.0-5.0 should be fine
+    if keyword_set( f_cushion ) then begin 
+        f_cushion = float( f_cushion )
+    endif else begin 
+        f_cushion = 4.0 
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -121,8 +137,15 @@ pro hs_coadd_sdss_pipe, html_list, hvdisp_home=hvdisp_home, $
             print, '   Will try to generate it .... ' 
             ;;
             hs_coadd_sdss_prep, html_file, csigma=350.0, output=prep_file, $
-                /mask_all, /quiet 
-        endif 
+                /mask_all, /quiet, sky_factor=sky_factor, f_cushion=f_cushion 
+        endif else begin 
+            if keyword_set( new_prep ) then begin 
+                print, '   Will generate a new prep.fits file .... '
+                hs_coadd_sdss_prep, html_file, csigma=350.0, output=prep_file, $
+                    /mask_all, /quiet, sky_factor=sky_factor, $
+                    f_cushion=f_cushion 
+            endif 
+        endelse
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         if NOT file_test( prep_file ) then begin 
             print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'

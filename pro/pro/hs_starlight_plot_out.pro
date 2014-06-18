@@ -28,7 +28,8 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
     zoomin=zoomin, window1=window1, window2=window2, window3=window3, $
     psxsize=psxsize, psysize=psysize, relative_res=relative_res, $
     include_mask_ori=include_mask_ori, exclude_mask_res=exclude_mask_res, $
-    met_label=met_label, met_title=met_title, topng=topng
+    met_label=met_label, met_title=met_title, topng=topng, $
+    res_cushion=res_cushion
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Constant 
@@ -468,14 +469,25 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Define a cuhsion to avoid the large residual at the edge of spectrum
+    if keyword_set( res_cushion ) then begin 
+        res_cushion = float( res_cushion ) ;; \AA
+    endif else begin 
+        res_cushion = ( ( max( wave )- min( wave ) ) / 80.0 )
+    endelse
+    index_res = where( ( wave GE ( min( wave ) + res_cushion ) ) AND $ 
+                       ( wave LE ( max( wave ) - res_cushion ) ) )
+    if ( index_res[ 0 ] EQ -1 ) then begin 
+        message, ' The res_cushion is not appropriately defined !! '
+    endif 
     if keyword_set( exclude_mask_res ) then begin 
         min_res = min( res_nan )
         max_res = max( res_nan )
         med_res = median( res_nan )
     endif else begin 
-        min_res = min( spec_res )
-        max_res = max( spec_res )
-        med_res = median( spec_res )
+        min_res = min( spec_res[ index_res ] )
+        max_res = max( spec_res[ index_res ] )
+        med_res = median( spec_res[ index_res ] )
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     
@@ -528,9 +540,11 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
     min_flux = min_flux < spec_syn_norm 
     sep_flux = ( ( max_flux - min_flux ) / 60.0 ) 
     if keyword_set( sig_over ) then begin 
-        min_flux = min_flux - ( n_ssp_sig * sep_flux * 10.0 ) 
-    endif 
-    flux_range = [ min_flux, ( max_flux + 4.0 * sep_flux ) ]
+        min_flux = ( min_flux - ( n_ssp_sig * sep_flux * 10.0 ) ) 
+    endif else begin 
+        min_flux = ( min_flux - 3.0 * sep_flux )
+    endelse
+    flux_range = [ min_flux, ( max_flux + 5.0 * sep_flux ) ]
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -555,7 +569,7 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
         max_res = ( max_res + sep_res ) < 0.299 
         res_inter = ceil( ceil( ( max_res - min_res ) / 0.051 ) / 4.0 ) * 0.05
     endelse
-    res_range  = [ min_res, max_res ]
+    res_range  = [ ( min_res - 1.5 * sep_res ), ( max_res + 2.5 * sep_res ) ]
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -567,23 +581,23 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
         xtickformat="(A1)", /nodata, xrange=wave_range, yrange=flux_range, $
         xticklen=0.05, yticklen=0.010
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; Highlight the wavelength window for normalization
-    cgPlot, [ sl_struc.llow_norm, sl_struc.llow_norm ], !Y.Crange, linestyle=2,$
-        thick=4.5, color=cgColor( 'Cyan' ), /overplot
-    cgPlot, [ sl_struc.lupp_norm, sl_struc.lupp_norm ], !Y.Crange, linestyle=2,$
-        thick=4.5, color=cgColor( 'Cyan' ), /overplot
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Highlight interesting spectral features 
     if keyword_set( feature_over ) then begin 
         hs_spec_index_over, index_list, /center_line
     endif
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Highlight the wavelength window for normalization
+    cgPlot, [ sl_struc.llow_norm, sl_struc.llow_norm ], !Y.Crange, linestyle=5,$
+        thick=5.0, color=cgColor( 'GRN4' ), /overplot
+    cgPlot, [ sl_struc.lupp_norm, sl_struc.lupp_norm ], !Y.Crange, linestyle=5,$
+        thick=5.0, color=cgColor( 'GRN4' ), /overplot
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Observed spectra 
-    cgPlot, wave, spec_obs, linestyle=0, thick=3.0, $
-        color=cgColor( 'Charcoal' ), /overplot
-    med_obs = median( spec_obs )
+    cgPlot, wave, spec_obs, linestyle=0, thick=4.8, color=cgColor( 'Black' ), $
+        /overplot
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Overlay the ssps with significatn constribution
+    med_obs    = median( spec_obs )
     f_sig_temp = 0.0
     if keyword_set( sig_over ) then begin 
         for j = 0, ( n_ssp_sig - 1 ), 1 do begin 
@@ -646,7 +660,7 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
     endif
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Synthetic spectra 
-    cgPlot, wave_nan, syn_nan, linestyle=0, thick=4.5, $
+    cgPlot, wave_nan, syn_nan, linestyle=0, thick=4.8, $
         color=cgColor( 'Red' ), /overplot
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Re-draw the axis
@@ -664,7 +678,7 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
     x_step = 0.04 
     label = 'Observed'
     cgPlots, [ x_pos, (x_pos+x_step) ], [ y_pos, y_pos ], linestyle=0, $
-        thick=10.0, color=cgColor( 'Gray' ), /normal
+        thick=12.0, color=cgColor( 'BLACK' ), /normal
     cgText, ( x_pos + 1.2 * x_step ), ( y_pos * 0.97 ), label, alignment=0, $
         charsize=3.5, charthick=10.0, color=cgColor( 'Black' ), /normal
     ;; Label 2
@@ -689,28 +703,28 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
         xticklen=0.18, yticklen=0.008, $
         xrange=wave_range, yrange=res_range, ytickinterval=res_inter 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; Highlight the wavelength window for normalization
-    cgPlot, [ sl_struc.llow_norm, sl_struc.llow_norm ], !Y.Crange, linestyle=2,$
-        thick=4.5, color=cgColor( 'Cyan' ), /overplot
-    cgPlot, [ sl_struc.lupp_norm, sl_struc.lupp_norm ], !Y.Crange, linestyle=2,$
-        thick=4.5, color=cgColor( 'Cyan' ), /overplot
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Highlight interesting spectral features 
     if keyword_set( feature_over ) then begin 
         hs_spec_index_over, index_list, /center_line
     endif
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Highlight the wavelength window for normalization
+    cgPlot, [ sl_struc.llow_norm, sl_struc.llow_norm ], !Y.Crange, linestyle=5,$
+        thick=5.0, color=cgColor( 'GRN4' ), /overplot
+    cgPlot, [ sl_struc.lupp_norm, sl_struc.lupp_norm ], !Y.Crange, linestyle=5,$
+        thick=5.0, color=cgColor( 'GRN4' ), /overplot
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Plot the residual spectra 
     cgPlot, wave, spec_res, linestyle=0, $
-        color=cgColor( 'Red' ), thick=4.0, /overplot  
+        color=cgColor( 'Red' ), thick=6.5, /overplot  
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Highlight masked out pixels 
-    cgPlot, wave_mask, res_mask, psym=14, symsize=1.4, thick=2.0, $
-        symcolor=cgColor( 'Dark Gray' ), /overplot 
+    cgPlot, wave_mask, res_mask, psym=14, symsize=1.2, thick=2.0, $
+        symcolor=cgColor( 'Blue' ), /overplot 
     cgPlot, wave_clip, res_clip, psym=16, symsize=1.0, thick=3.0, $
         symcolor=cgColor( 'Green' ), /overplot  
     cgPlot, wave_flag, res_flag, psym=17, symsize=1.5, thick=2.0, $
-        symcolor=cgColor( 'Blue' ), /overplot
+        symcolor=cgColor( 'Dark Gray' ), /overplot
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Highlight the zero-redsidual line 
     cgPlot, !X.Crange, [ 0.0, 0.0 ], linestyle=2, thick=5.5, $
@@ -745,14 +759,14 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
         x2 = position_3[0] 
         y1 = position_1[3] 
         y2 = position_3[1] 
-        cgPlots, [x1,x2], [y1,y2], linestyle=2, thick=12.0, $
-            color=cgColor('Dark Gray'), /normal
+        cgPlots, [x1,x2], [y1,y2], linestyle=5, thick=9.0, $
+            color=cgColor('Brown'), /normal
         y3 = ( ( max( spec_obs[ where( ( wave GE ( wrange1[0] - 3 ) ) AND $
             ( wave LE ( wrange1[0] + 3 ) ) ) ] ) + 0.01 ) - flux_range[0] ) / $ 
             ( flux_range[1] - flux_range[0] ) * $
             ( position_1[3] - position_1[1] ) + position_1[1]
-        cgPlots, [x1,x1], [y1,y3], linestyle=2, thick=12.0, $
-            color=cgColor('Dark Gray'), /normal
+        cgPlots, [x1,x1], [y1,y3], linestyle=5, thick=9.0, $
+            color=cgColor('Brown'), /normal
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         x1 = ( ( wrange1[1] - wave_range[0] ) / $
             ( wave_range[1] - wave_range[0] ) * $ 
@@ -760,14 +774,14 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
         x2 = position_3[2] 
         y1 = position_1[3] 
         y2 = position_3[1] 
-        cgPlots, [x1,x2], [y1,y2], linestyle=2, thick=12.0, $
-            color=cgColor('Dark Gray'), /normal
+        cgPlots, [x1,x2], [y1,y2], linestyle=5, thick=9.0, $
+            color=cgColor('Brown'), /normal
         y3 = ( ( max( spec_obs[ where( ( wave GE ( wrange1[1] - 3 ) ) AND $
             ( wave LE ( wrange1[1] + 3 ) ) ) ] ) + 0.01 ) - flux_range[0] ) / $ 
             ( flux_range[1] - flux_range[0] ) * $
             ( position_1[3] - position_1[1] ) + position_1[1]
-        cgPlots, [x1,x1], [y1,y3], linestyle=2, thick=12.0, $
-            color=cgColor('Dark Gray'), /normal
+        cgPlots, [x1,x1], [y1,y3], linestyle=5, thick=9.0, $
+            color=cgColor('Brown'), /normal
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         cgPlot, wave, spec_obs, xstyle=1, ystyle=1, charthick=8.0, $
             charsize=2.0, xthick=12.0, ythick=12.0, /noerase, $
@@ -788,8 +802,8 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
         cgAxis, xaxis=1.0, xrange=wrange1, xstyle=1, charsize=2.5, xthick=10.0, $
             xticklen=0.05
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        cgPlot, wave, spec_obs, linestyle=0, thick=2.0, $
-            color=cgColor('Dark Gray'), /overplot 
+        cgPlot, wave, spec_obs, linestyle=0, thick=4.0, $
+            color=cgColor('Black'), /overplot 
         cgPlot, wave, spec_syn, linestyle=0, thick=6.0, color=cgColor('Red'), $ 
             /overplot 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -818,14 +832,14 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
         x2 = position_4[0] 
         y1 = position_1[3] 
         y2 = position_4[1] 
-        cgPlots, [x1,x2], [y1,y2], linestyle=2, thick=12.0, $
-            color=cgColor('Dark Gray'), /normal
+        cgPlots, [x1,x2], [y1,y2], linestyle=5, thick=9.0, $
+            color=cgColor('Brown'), /normal
         y3 = ( ( max( spec_obs[ where( ( wave GE ( wrange2[0] - 3 ) ) AND $
             ( wave LE ( wrange2[0] + 3 ) ) ) ] ) + 0.01 ) - flux_range[0] ) / $ 
             ( flux_range[1] - flux_range[0] ) * $
             ( position_1[3] - position_1[1] ) + position_1[1]
-        cgPlots, [x1,x1], [y1,y3], linestyle=2, thick=12.0, $
-            color=cgColor('Dark Gray'), /normal
+        cgPlots, [x1,x1], [y1,y3], linestyle=5, thick=9.0, $
+            color=cgColor('Brown'), /normal
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
         x1 = ( ( wrange2[1] - wave_range[0] ) / $
             ( wave_range[1] - wave_range[0] ) * $ 
@@ -833,14 +847,14 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
         x2 = position_4[2] 
         y1 = position_1[3] 
         y2 = position_4[1] 
-        cgPlots, [x1,x2], [y1,y2], linestyle=2, thick=12.0, $
-            color=cgColor('Dark Gray'), /normal
+        cgPlots, [x1,x2], [y1,y2], linestyle=5, thick=9.0, $
+            color=cgColor('Brown'), /normal
         y3 = ( ( max( spec_obs[ where( ( wave GE ( wrange2[1] - 3 ) ) AND $
             ( wave LE ( wrange2[1] + 3 ) ) ) ] ) + 0.01 ) - flux_range[0] ) / $ 
             ( flux_range[1] - flux_range[0] ) * $
             ( position_1[3] - position_1[1] ) + position_1[1]
-        cgPlots, [x1,x1], [y1,y3], linestyle=2, thick=12.0, $
-            color=cgColor('Dark Gray'), /normal
+        cgPlots, [x1,x1], [y1,y3], linestyle=5, thick=9.0, $
+            color=cgColor('Brown'), /normal
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
     
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
@@ -854,12 +868,8 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
             hs_spec_index_over, index_list, /center_line
         endif
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
-        cgPlot, wave, spec_obs, linestyle=0, thick=2.0, $
-            color=cgColor('Dark Gray'), /overplot 
-        cgPlot, wave, spec_syn, linestyle=0, thick=6.0, $
-            color=cgColor('Red'), /overplot 
-        cgPlot, wave, spec_obs, linestyle=0, thick=2.0, $
-            color=cgColor('Dark Gray'), /overplot 
+        cgPlot, wave, spec_obs, linestyle=0, thick=4.5, $
+            color=cgColor('Black'), /overplot 
         cgPlot, wave, spec_syn, linestyle=0, thick=6.0, $
             color=cgColor('Red'), /overplot 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
@@ -893,14 +903,14 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
         x2 = position_5[0] 
         y1 = position_1[3] 
         y2 = position_5[1] 
-        cgPlots, [x1,x2], [y1,y2], linestyle=2, thick=12.0, $
-            color=cgColor('Dark Gray'), /normal
+        cgPlots, [x1,x2], [y1,y2], linestyle=5, thick=9.0, $
+            color=cgColor('Brown'), /normal
         y3 = ( ( max( spec_obs[ where( ( wave GE ( wrange3[0] - 3 ) ) AND $
             ( wave LE ( wrange3[0] + 3 ) ) ) ] ) + 0.01 ) - flux_range[0] ) / $ 
             ( flux_range[1] - flux_range[0] ) * $
             ( position_1[3] - position_1[1] ) + position_1[1]
-        cgPlots, [x1,x1], [y1,y3], linestyle=2, thick=12.0, $
-            color=cgColor('Dark Gray'), /normal
+        cgPlots, [x1,x1], [y1,y3], linestyle=5, thick=9.0, $
+            color=cgColor('Brown'), /normal
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
         x1 = ( ( wrange3[1] - wave_range[0] ) / $
             ( wave_range[1] - wave_range[0] ) * $ 
@@ -908,14 +918,14 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
         x2 = position_5[2] 
         y1 = position_1[3] 
         y2 = position_5[1] 
-        cgPlots, [x1,x2], [y1,y2], linestyle=2, thick=12.0, $
-            color=cgColor('Dark Gray'), /normal
+        cgPlots, [x1,x2], [y1,y2], linestyle=5, thick=9.0, $
+            color=cgColor('Brown'), /normal
         y3 = ( ( max( spec_obs[ where( ( wave GE ( wrange3[1] - 3 ) ) AND $
             ( wave LE ( wrange3[1] + 3 ) ) ) ] ) + 0.01 ) - flux_range[0] ) / $ 
             ( flux_range[1] - flux_range[0] ) * $
             ( position_1[3] - position_1[1] ) + position_1[1]
-        cgPlots, [x1,x1], [y1,y3], linestyle=2, thick=12.0, $
-            color=cgColor('Dark Gray'), /normal
+        cgPlots, [x1,x1], [y1,y3], linestyle=5, thick=9.0, $
+            color=cgColor('Brown'), /normal
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
     
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
@@ -929,12 +939,8 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
             hs_spec_index_over, index_list, /center_line
         endif
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
-        cgPlot, wave, spec_obs, linestyle=0, thick=2.0, $
-            color=cgColor('Dark Gray'), /overplot 
-        cgPlot, wave, spec_syn, linestyle=0, thick=6.0, $
-            color=cgColor('Red'), /overplot 
-        cgPlot, wave, spec_obs, linestyle=0, thick=2.0, $
-            color=cgColor('Dark Gray'), /overplot 
+        cgPlot, wave, spec_obs, linestyle=0, thick=4.6, $
+            color=cgColor('Black'), /overplot 
         cgPlot, wave, spec_syn, linestyle=0, thick=6.0, $
             color=cgColor('Red'), /overplot 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
@@ -1016,108 +1022,114 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
         color=cgColor('Black'), alignment=0.5, /normal 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Name of the mask file   
-    xloc = left + ( xstep * 1.5 ) 
-    yloc = upper - ( ystep * 5.0 ) 
+    xloc = left + ( xstep * 1.4 ) 
+    yloc = upper - ( ystep * 4.8 ) 
     label = 'Mask: ' + $
         strcompress( sl_struc.mask_name, /remove_all ) 
-    cgText, xloc, yloc, label, charsize=3.0, charthick=9.0, $
+    cgText, xloc, yloc, label, charsize=3.1, charthick=9.0, $
         color=cgColor('Black'), alignment=0.0, /normal 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Extinction name  
-    xloc = xmiddle - ( xstep * 0.2 ) 
-    yloc = upper - ( ystep * 5.0 ) 
+    xloc = xmiddle - ( xstep * 0.1 ) 
+    yloc = upper - ( ystep * 4.8 ) 
     label = 'Reddening: ' + strlowcase( sl_struc.red_law )
-    cgText, xloc, yloc, label, charsize=3.0, charthick=9.0, $
+    cgText, xloc, yloc, label, charsize=3.1, charthick=9.0, $
         color=cgColor('Black'), alignment=0.0, /normal 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Recuded_chi^2 name  
-    xloc = left + ( xstep * 1.5 )
+    xloc = left + ( xstep * 3.0 )
     yloc = upper - ( ystep * 6.0 ) 
-    label = 'Chi2 : ' + $
-        strcompress( string( sl_struc.total_chi2, format='(F9.3)' ), $
+    label = 'Chi2: ' + $
+        strcompress( string( sl_struc.total_chi2, format='(F9.2)' ), $
         /remove_all ) 
     cgText, xloc, yloc, label, charsize=3.0, charthick=9.0, $
         color=cgColor('Black'), alignment=0.0, /normal 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; Adev1 
-    xloc = xmiddle - ( xstep * 0.2 )
+    ; Delta  
+    xloc = xmiddle + ( xstep * 0.8 )
     yloc = upper - ( ystep * 6.0 ) 
+    label = 'Delta: ' + $
+        strcompress( string( sl_struc.avg_delta, format='(F9.3)' ), /remove_all ) 
+    cgText, xloc, yloc, label, charsize=3.0, charthick=9.0, $
+        color=cgColor('Black'), alignment=0.0, /normal 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ; Adev1  
+    xloc = left + ( xstep * 3.0 )
+    yloc = upper - ( ystep * 7.0 ) 
     label = 'Adev1: ' + $
         strcompress( string( sl_struc.adev1, format='(F9.3)' ), /remove_all ) 
     cgText, xloc, yloc, label, charsize=3.0, charthick=9.0, $
         color=cgColor('Black'), alignment=0.0, /normal 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ; Adev2  
-    xloc = left + ( xstep * 1.5 )
+    ;; Adev2 
+    xloc = xmiddle + ( xstep * 0.8 )
     yloc = upper - ( ystep * 7.0 ) 
     label = 'Adev2: ' + $
         strcompress( string( sl_struc.adev2, format='(F9.3)' ), /remove_all ) 
-    cgText, xloc, yloc, label, charsize=2.6, charthick=9.0, $
+    cgText, xloc, yloc, label, charsize=3.0, charthick=9.0, $
         color=cgColor('Black'), alignment=0.0, /normal 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ; Delta  
-    xloc = xmiddle - ( xstep * 0.2 )
-    yloc = upper - ( ystep * 7.0 ) 
-    label = 'Delta: ' + $
-        strcompress( string( sl_struc.avg_delta, format='(E9.3)' ), /remove_all ) 
-    cgText, xloc, yloc, label, charsize=2.6, charthick=9.0, $
-        color=cgColor('Black'), alignment=0.0, /normal 
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; av   
-    xloc = left + ( xstep * 1.5 )
+    ;; AV   
+    xloc = left + ( xstep * 3.0 )
     yloc = upper - ( ystep * 8.0 ) 
-    label = 'Av:' + string( sl_struc.av_min, format='(F7.2)' ) 
+    label = 'Av: ' + strcompress( $
+        string( sl_struc.av_min, format='(F7.2)' ), /remove_all ) 
     cgText, xloc, yloc, label, charsize=3.0, charthick=9.0, $
         color=cgColor('Black'), alignment=0.0, /normal 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; v0_min   
-    xloc = left + ( xstep * 1.5 )
+    ;; V0_min   
+    xloc = left + ( xstep * 3.0 )
     yloc = upper - ( ystep * 9.0 ) 
-    label = 'V0:' + string( sl_struc.v0_min, format='(F7.2)' ) 
+    label = 'V0:  ' + strcompress( $
+        string( sl_struc.v0_min, format='(F7.1)' ), /remove_all )
     cgText, xloc, yloc, label, charsize=3.0, charthick=9.0, $
         color=cgColor('Black'), alignment=0.0, /normal 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; vd_min   
-    xloc = left + ( xstep * 1.5 )
+    ;; Vd_min   
+    xloc = left + ( xstep * 3.0 )
     yloc = upper - ( ystep * 10.0 ) 
-    label = 'Vd:' + string( sl_struc.vd_min, format='(F7.2)' ) 
+    label = 'Vd: ' + strcompress( $
+        string( sl_struc.vd_min, format='(F7.1)' ), /remove_all ) 
     cgText, xloc, yloc, label, charsize=3.0, charthick=9.0, $
         color=cgColor('Black'), alignment=0.0, /normal 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; sn_window   
-    xloc = left + ( xstep * 1.5 )
+    ;; SN_window   
+    xloc = left + ( xstep * 3.0 )
     yloc = upper - ( ystep * 11.0 ) 
-    label = 'SN:' + string( sl_struc.sn_window, format='(F7.2)' ) 
+    label = 'SN: ' + strcompress ( $
+        string( sl_struc.sn_window, format='(F7.1)' ), /remove_all )
     cgText, xloc, yloc, label, charsize=3.0, charthick=9.0, $
         color=cgColor('Black'), alignment=0.0, /normal 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; at_flux    
-    xloc = xmiddle - ( xstep * 0.2 )
+    ;; AGE_flux    
+    xloc = xmiddle + ( xstep * 0.8 )
     yloc = upper - ( ystep * 8.0 ) 
-    label = 'age_flux:' + string( ( sl_struc.at_flux / 1.0D9 ), $
-        format='(F8.2)' ) 
+    label = 'AGE_f:   ' + strcompress( string( ( sl_struc.at_flux / 1.0D9 ), $
+        format='(F7.2)' ), /remove_all ) 
     cgText, xloc, yloc, label, charsize=3.0, charthick=9.0, $
         color=cgColor('Black'), alignment=0.0, /normal 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; at_mass   
-    xloc = xmiddle - ( xstep * 0.2 )
+    ;; AGE_mass   
+    xloc = xmiddle + ( xstep * 0.8 )
     yloc = upper - ( ystep * 9.0 ) 
-    label = 'age_mass:' + string( ( sl_struc.at_mass / 1.0D9 ), $
-        format='(F7.2)' ) 
+    label = 'AGE_m: ' + strcompress( string( ( sl_struc.at_mass / 1.0D9 ), $
+        format='(F7.2)' ), /remove_all ) 
     cgText, xloc, yloc, label, charsize=3.0, charthick=9.0, $
         color=cgColor('Black'), alignment=0.0, /normal 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; am_flux    
-    xloc = xmiddle - ( xstep * 0.2 )
+    ;; MET_flux    
+    xloc = xmiddle + ( xstep * 0.8 )
     yloc = upper - ( ystep * 10.0 ) 
-    label = 'met_flux:' + string( sl_struc.am_flux, format='(F8.2)' ) 
+    label = 'MET_f:   ' + strcompress( $
+        string( sl_struc.am_flux, format='(F7.2)' ), /remove_all ) 
     cgText, xloc, yloc, label, charsize=3.0, charthick=9.0, $
         color=cgColor('Black'), alignment=0.0, /normal 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; am_mass   
-    xloc = xmiddle - ( xstep * 0.2 )
+    ;; MET_mass   
+    xloc = xmiddle + ( xstep * 0.8 )
     yloc = upper - ( ystep * 11.0 ) 
-    label = 'met_mass:' + string( sl_struc.am_mass, format='(F7.2)' ) 
+    label = 'MET_m: ' + strcompress( $
+        string( sl_struc.am_mass, format='(F7.2)' ), /remove_all )
     cgText, xloc, yloc, label, charsize=3.0, charthick=9.0, $
         color=cgColor('Black'), alignment=0.0, /normal 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

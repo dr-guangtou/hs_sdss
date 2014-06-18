@@ -15,15 +15,16 @@
 ;
 ; HISTORY:
 ;             Song Huang, 2014/06/05 - First version 
+;             Song Huang, 2014/06/18 - Minor improvements, more freedom 
 ;-
 ; CATEGORY:    HS_SDSS
 ;------------------------------------------------------------------------------
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-pro hs_coadd_sdss_prep, list_file, data_home=data_home, $
+pro hs_coadd_sdss_prep, list_file, hvdisp_home=hvdisp_home, $
     norm0=norm0, norm1=norm1, csigma=csigma, output=output, $
     mask_all=mask_all, add_random=add_random, $
-    debug=debug, quiet=quiet 
+    debug=debug, quiet=quiet, sky_factor=sky_factor, f_cushion=f_cushion 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 on_error, 2
@@ -50,21 +51,30 @@ velscale_sdss = ( 0.0001D * cs * alog( 10.0D ) )
 ;; SDSS instrument resolution FWHM 
 fwhm_sdss = 2.76  ;; Angstrom
 ;; Factor to reject pixels that are affected by sky emission lines 
-sky_factor = 2.0
+if keyword_set( sky_factor ) then begin 
+    sky_factor = float( sky_factor )
+endif else begin 
+    sky_factor = 2.0
+endelse
 ;; The wavelength separation for the coadded spectrum 
 dw = 1.0  ;; Angstrom
 ;; Cushion factor: define the wavelength range you want to hide at both short 
 ;; and long wavelength end; The smaller the value of this factor, the more 
 ;; you hide.  Normally 2.0-5.0 should be fine
-f_cushion = 2.0
+if keyword_set( f_cushion ) then begin 
+    f_cushion = float( f_cushion )
+endif else begin 
+    f_cushion = 4.0 
+endelse
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Location of the _hs.fits files 
-if keyword_set( data_home ) then begin 
+if keyword_set( hvdisp_home ) then begin 
     hvdisp_location, hvdisp_home, data_home
 endif else begin 
-    data_home = '/media/hs/Elements/data/spectra/spec/'
+    hvdisp_home = '/media/hs/Astro1/data/hvdisp/spec/'
+    data_home   = '/media/hs/Astro1/data/hvdisp/spec/'
 endelse
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -83,8 +93,8 @@ endif else begin
 endelse
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Define the prefix of output files 
-temp = strsplit( list_file, '.', /extract ) 
-list_string = strcompress( temp[0], /remove_all )
+temp = strsplit( list_file, '/.', /extract ) 
+list_string = temp[ n_elements( temp ) - 2 ]
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -138,18 +148,20 @@ l_edge_0 = min( min_rest_arr )
 l_edge_1 = max( min_rest_arr ) 
 r_edge_0 = min( max_rest_arr ) 
 r_edge_1 = max( max_rest_arr ) 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 l_coadd_cushion = ( ( l_edge_1 - l_edge_0 ) / f_cushion )
 r_coadd_cushion = ( ( r_edge_1 - r_edge_0 ) / f_cushion )
-wave_0 = long( l_edge_0 + l_coadd_cushion )
-wave_1 = long( r_edge_1 - r_coadd_cushion )
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+wave_0   = long( l_edge_0 + l_coadd_cushion )
+wave_1   = long( r_edge_1 - r_coadd_cushion )
 wave_sep = ( wave_1 - wave_0 )
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Number of pixels in the new wavelength array 
 n_pixel_inter = long( wave_1 - wave_0 + 1 )
 ;; The new array for linear wavelength 
-wave_inter = wave_0 + findgen( n_pixel_inter ) * dw 
-wave_0 = min( wave_inter ) 
-wave_1 = max( wave_inter )
+wave_inter    = wave_0 + findgen( n_pixel_inter ) * dw 
+wave_0        = min( wave_inter ) 
+wave_1        = max( wave_inter )
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -158,13 +170,13 @@ wave_1 = max( wave_inter )
 if ( n_elements( norm0 ) ne 0 ) then begin 
     norm_wave_0 = float( norm0 ) 
 endif else begin 
-    norm_wave_0 = 4200.0 ;; Angstrom 
+    norm_wave_0 = 5300.0 ;; Angstrom 
 endelse 
 ;; Long wavelength end
 if ( n_elements( norm1 ) ne 0 ) then begin 
     norm_wave_1 = float( norm1 ) 
 endif else begin 
-    norm_wave_1 = 4300.0 ;; Angstrom 
+    norm_wave_1 = 5400.0 ;; Angstrom 
 endelse 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Check if the normalization range is within the wavelength range 
@@ -194,7 +206,7 @@ endelse
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-if NOT keyword_set( QUIET ) then begin 
+;if NOT keyword_set( QUIET ) then begin 
     print, '##############################################################'
     print, ' Will Coadd ' + string( n_spec, format='(I6)' ) + '   Spectra ' 
     print, '##############################################################'
@@ -202,11 +214,17 @@ if NOT keyword_set( QUIET ) then begin
     print, '    ' + string( norm_wave_0, format='(F7.2)' ) + ' -- ' + $ 
         string( norm_wave_1, format='(F7.2)' ) 
     print, '##############################################################'
+    print, ' The Wavelength Coverage of the Original Spectra: '
+    print, ' ' + string( l_edge_0, format='(F7.2)' ) + ' -- ' + $
+        string( l_edge_1, format='(F7.2)' )
+    print, ' ' + string( r_edge_0, format='(F7.2)' ) + ' -- ' + $
+        string( r_edge_1, format='(F7.2)' )
+    print, '##############################################################'
     print, ' The Wavelength Coverage of the Co-added Spectrum: '
     print, ' ' + string( wave_0, format='(F7.2)' ) + ' -- ' + $
         string( wave_1, format='(F7.2)' )
     print, '##############################################################'
-endif
+;endif
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

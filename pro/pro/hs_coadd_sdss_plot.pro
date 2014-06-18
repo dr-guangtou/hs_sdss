@@ -263,7 +263,8 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Overplot interesting index 
     if ( list_find EQ 1 ) then begin 
-        hs_spec_index_over, index_list, /center_line
+        hs_spec_index_over, index_list, /center_line, line_center=0, $
+            color_center='TAN3'
     endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Shade over the bootstrap region 
@@ -272,16 +273,16 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
         color=cgColor( 'BLK4' )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Highlight the safe range 
-    cgOPlot, [ wave_safe0, wave_safe0 ], !Y.Crange, linestyle=2, $
-        thick=5.0, color=cgColor( 'GREEN' )
-    cgOPlot, [ wave_safe1, wave_safe1 ], !Y.Crange, linestyle=2, $
-        thick=5.0, color=cgColor( 'GREEN' )
+    cgOPlot, [ wave_safe0, wave_safe0 ], !Y.Crange, linestyle=5, $
+        thick=5.0, color=cgColor( 'GRN4' )
+    cgOPlot, [ wave_safe1, wave_safe1 ], !Y.Crange, linestyle=5, $
+        thick=5.0, color=cgColor( 'GRN4' )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Highlight the normalization range
-    cgOPlot, [ min_norm, min_norm ], !Y.Crange, linestyle=2, $
-        thick=5.0, color=cgColor( 'ORANGE' )
-    cgOPlot, [ max_norm, max_norm ], !Y.Crange, linestyle=2, $
-        thick=5.0, color=cgColor( 'ORANGE' )
+    cgOPlot, [ min_norm, min_norm ], !Y.Crange, linestyle=5, $
+        thick=5.0, color=cgColor( 'BLU4' )
+    cgOPlot, [ max_norm, max_norm ], !Y.Crange, linestyle=5, $
+        thick=5.0, color=cgColor( 'BLU4' )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Shade over the bootstrap sigma 
     cgColorFill, [ wave_comf[0], wave_comf, reverse( wave_comf ) ], $
@@ -500,9 +501,22 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
         xtitle='Wavelength (Angstrom)', ytitle='Flux (Normalized)', $
         xticklen=0.03, yticklen=0.01 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Highlight the safe range 
+    cgPlot, [ wave_safe0, wave_safe0 ], !Y.Crange, /overplot, linestyle=5, $
+        thick=5.0, color=cgColor( 'GRN4' )
+    cgPlot, [ wave_safe1, wave_safe1 ], !Y.Crange, /overplot, linestyle=5, $
+        thick=5.0, color=cgColor( 'GRN4' )
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Highlight the normalization range
+    cgPlot, [ min_norm, min_norm ], !Y.Crange, /overplot, linestyle=5, $
+        thick=5.0, color=cgColor( 'BLU4' )
+    cgPlot, [ max_norm, max_norm ], !Y.Crange, /overplot, linestyle=5, $
+        thick=5.0, color=cgColor( 'BLU4' )
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Overplot interesting index 
     if ( list_find EQ 1 ) then begin 
-        hs_spec_index_over, index_list, /center_line
+        hs_spec_index_over, index_list, /center_line, color_center='TAN4', $
+            line_center=0
     endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Shade over the outer-fence region 
@@ -522,18 +536,6 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
         reverse( wave[ index_comf ] ) ], $
         [lquar[ index_comf[0] ], lquar[ index_comf ], $
         reverse( uquar[ index_comf ] ) ], color=cgColor( 'RED3' )
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; Highlight the safe range 
-    cgPlot, [ wave_safe0, wave_safe0 ], !Y.Crange, /overplot, linestyle=2, $
-        thick=5.0, color=cgColor( 'GREEN' )
-    cgPlot, [ wave_safe1, wave_safe1 ], !Y.Crange, /overplot, linestyle=2, $
-        thick=5.0, color=cgColor( 'GREEN' )
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; Highlight the normalization range
-    cgPlot, [ min_norm, min_norm ], !Y.Crange, /overplot, linestyle=2, $
-        thick=5.0, color=cgColor( 'ORANGE' )
-    cgPlot, [ max_norm, max_norm ], !Y.Crange, /overplot, linestyle=2, $
-        thick=5.0, color=cgColor( 'ORANGE' )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Shade over the bootstrap region 
     cgColorFill, [ wave[ index_comf[0] ], wave[ index_comf ], $

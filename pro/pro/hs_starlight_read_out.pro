@@ -849,10 +849,11 @@ pro hs_starlight_read_out, sl_output, sl_struc, base_struc, spec_struc, $
     abs_dev = ( ABS( spec_struc[ index_use ].spec_res ) / $
         spec_struc[ index_use ].spec_syn ) 
     resistant_mean, abs_dev, 3.5, avg_abs_dev, sig_abs_dev, num_rej, /silent
-    sl_struc.adev2 = ( avg_abs_dev * 100.0 )
+    sl_struc.adev2 = ( avg_abs_dev * 100.0D )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Get the avg_delta
-    sl_struc.avg_delta = ( total( abs_dev ) / n_pix_use )
+    help, abs_dev 
+    sl_struc.avg_delta = ( total( abs_dev * 100.0D ) / n_pix_use )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1090,7 +1091,7 @@ pro hs_starlight_read_out, sl_output, sl_struc, base_struc, spec_struc, $
         spec_txt = out_string + '.spec' 
         comma = ' , '
         openw, 20, spec_txt, width=600 
-        printf, 20, '#Wavelength , Spec_OBS , Spec_SYN , Spec_RED , Spec_WEI , ' + $
+        printf, 20, '#Wavelength , Spec_OBS , Spec_SYN , Spec_RES , Spec_WEI , ' + $
             'Final_Mask , Pixel_Mask , Pixel_Clip , Pixel_Flag '
         for i = 0, ( nlobs - 1 ), 1 do begin 
             printf, 20, $
