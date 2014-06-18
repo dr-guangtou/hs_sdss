@@ -250,8 +250,8 @@ function hs_coadd_sdss_robust, prep_file, plot=plot, error=error, $
         
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; PC 6
-        yrange = [ ( min( pca_evectors[*,5] ) * 0.99 ), $
-                   ( max( pca_evectors[*,5] ) * 1.05 ) ]
+        yrange = [ ( min( pca_evectors[*,5] ) * 0.95 ), $
+                   ( max( pca_evectors[*,5] ) * 1.25 ) ]
         cgPlot, new_wave, pca_evectors[*,5], xstyle=1, ystyle=1, yrange=yrange, $
             position=[ 0.10, 0.100, 0.99, 0.247 ], xthick=6.0, ythick=6.0, $
             charsize=2.5, charthick=6.0, xtitle='Wavelength (Angstrom)', $
@@ -270,8 +270,8 @@ function hs_coadd_sdss_robust, prep_file, plot=plot, error=error, $
             /noerase, xticklen=0.04, yticklen=0.01, thick=2.5
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; PC5
-        yrange = [ ( min( pca_evectors[*,4] ) * 0.99 ), $
-                   ( max( pca_evectors[*,4] ) * 1.05 ) ]
+        yrange = [ ( min( pca_evectors[*,4] ) * 0.95 ), $
+                   ( max( pca_evectors[*,4] ) * 1.25 ) ]
         cgPlot, new_wave, pca_evectors[*,4], xstyle=1, ystyle=1, yrange=yrange, $
             position=[ 0.10, 0.247, 0.99, 0.394 ], xthick=6.0, ythick=6.0, $
             charsize=2.5, charthick=6.0, xtickformat='(A1)', $
@@ -290,8 +290,8 @@ function hs_coadd_sdss_robust, prep_file, plot=plot, error=error, $
             /noerase, xticklen=0.04, yticklen=0.01, thick=2.5
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; PC4
-        yrange = [ ( min( pca_evectors[*,3] ) * 0.99 ), $
-                   ( max( pca_evectors[*,3] ) * 1.05 ) ]
+        yrange = [ ( min( pca_evectors[*,3] ) * 0.95 ), $
+                   ( max( pca_evectors[*,3] ) * 1.25 ) ]
         cgPlot, new_wave, pca_evectors[*,3], xstyle=1, ystyle=1, yrange=yrange, $
             position=[ 0.10, 0.394, 0.99, 0.541 ], xthick=6.0, ythick=6.0, $
             charsize=2.5, charthick=6.0, xtickformat='(A1)', $
@@ -310,8 +310,8 @@ function hs_coadd_sdss_robust, prep_file, plot=plot, error=error, $
             /noerase, xticklen=0.04, yticklen=0.01, thick=2.5
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; PC3
-        yrange = [ ( min( pca_evectors[*,2] ) * 0.99 ), $
-                   ( max( pca_evectors[*,2] ) * 1.05 ) ]
+        yrange = [ ( min( pca_evectors[*,2] ) * 0.95 ), $
+                   ( max( pca_evectors[*,2] ) * 1.25 ) ]
         cgPlot, new_wave, pca_evectors[*,2], xstyle=1, ystyle=1, yrange=yrange, $
             position=[ 0.10, 0.541, 0.99, 0.688 ], xthick=6.0, ythick=6.0, $
             charsize=2.5, charthick=6.0, xtickformat='(A1)', $
@@ -330,8 +330,8 @@ function hs_coadd_sdss_robust, prep_file, plot=plot, error=error, $
             /noerase, xticklen=0.04, yticklen=0.01, thick=2.5
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; PC2
-        yrange = [ ( min( pca_evectors[*,1] ) * 0.99 ), $
-                   ( max( pca_evectors[*,1] ) * 1.05 ) ]
+        yrange = [ ( min( pca_evectors[*,1] ) * 0.95 ), $
+                   ( max( pca_evectors[*,1] ) * 1.25 ) ]
         cgPlot, new_wave, pca_evectors[*,1], xstyle=1, ystyle=1, yrange=yrange, $
             position=[ 0.10, 0.688, 0.99, 0.835 ], xthick=6.0, ythick=6.0, $
             charsize=2.5, charthick=6.0, xtickformat='(A1)', $
@@ -350,7 +350,7 @@ function hs_coadd_sdss_robust, prep_file, plot=plot, error=error, $
             /noerase, xticklen=0.04, yticklen=0.01, thick=2.5
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; PC1
-        yrange = [ ( min( pca_evectors[*,0] ) * 0.99 ), $
+        yrange = [ ( min( pca_evectors[*,0] ) * 0.95 ), $
                    ( max( pca_evectors[*,0] ) * 1.50 ) ]
         cgPlot, new_wave, pca_evectors[*,0], xstyle=1, ystyle=1, yrange=yrange, $
             position=[ 0.10, 0.835, 0.99, 0.982 ], xthick=6.0, ythick=6.0, $
