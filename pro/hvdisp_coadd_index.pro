@@ -54,6 +54,36 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+pro hvdisp_coadd_batch, input_list, index_list=index_list
+
+    ;; 
+    if keyword_set( index_list ) then begin 
+        index_list = strcompress( index_list, /remove_all ) 
+    endif else begin 
+        index_default = 'hs_index_all.lis'
+    endelse
+    ;;
+    readcol, input_list, input_files, format='A', delimiter=' ', comment='#', $
+        /silent, count=n_input
+    ;;
+    for mm = 0, ( n_input - 1 ), 1 do begin 
+        print, '###############################################################'
+        coadd_list = strcompress( input_files[ mm ], /remove_all )
+        print, ' Measure spectral index for : ' + coadd_list 
+        print, '###############################################################'
+        ;;
+        temp = strsplit( coadd_list, '/.', /extract ) 
+        coadd_prefix = temp[ n_elements( temp ) - 2 ] 
+        strreplace, coadd_prefix, 'hvdisp_', '' 
+        ;; 
+        hvdisp_coadd_index, coadd_list, index_list=index_list, $
+            suffix=coadd_prefix, /save_csv 
+    endfor 
+
+end
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 pro hvdisp_coadd_index, coadd_list, index_list=index_list, $
     hvdisp_home=hvdisp_home, suffix=suffix, save_csv=save_csv 
 
@@ -65,7 +95,7 @@ pro hvdisp_coadd_index, coadd_list, index_list=index_list, $
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     loc_coadd    = hvdisp_home + 'coadd/'
-    loc_result   = hvdisp_home + 'coadd/results/'
+    loc_result   = hvdisp_home + 'coadd/results/index/'
     loc_indexlis = hvdisp_home + 'pro/lis/'
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     comma = ' , '
@@ -175,7 +205,7 @@ pro hvdisp_coadd_index, coadd_list, index_list=index_list, $
         endif 
         ;;; ---- Add RED_INDEX and RED_VALUE ----
         struct_add_field, index_results, 'red_index', red_index
-        struct_add_field, index_results, 'red_value', red_value
+        struct_add_field, index_results, 'red_value', float( red_value )
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         sig_index = strmid( temp[1], 1, 1 ) 
         sig_value = get_sig_value( sig_index )
@@ -184,7 +214,7 @@ pro hvdisp_coadd_index, coadd_list, index_list=index_list, $
         endif 
         ;;; ---- Add SIG_INDEX and SIG_VALUE ----
         struct_add_field, index_results, 'sig_index', sig_index
-        struct_add_field, index_results, 'sig_value', sig_value
+        struct_add_field, index_results, 'sig_value', float( sig_value )
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         grp_index = strmid( temp[1], 2, 1 )
         ;;; ---- Add GRP_INDEX ----

@@ -9,7 +9,7 @@ function hs_string_replace, str0, str1, str2
     str_out = str_in
     str_size = size( str_in )
     n_str    = n_elements( str_size ) 
-    if ( str_size( n_str - 2 ) NE 7 ) then begin 
+    if ( str_size[ n_str - 2 ] NE 7 ) then begin 
         message, ' The input has to be a string array '
     endif 
 

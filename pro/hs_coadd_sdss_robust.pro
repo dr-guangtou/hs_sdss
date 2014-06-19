@@ -23,6 +23,8 @@
 ;
 ; HISTORY:
 ;             Song Huang, 2014/06/05 - First version 
+;             Song Huang, 2014/06/18 - Minor improvements, add MIN_WAVE_HARD, 
+;                                      MAX_WAVE_HARD keywords
 ;-
 ; CATEGORY:    HS_SDSS
 ;------------------------------------------------------------------------------
@@ -31,7 +33,8 @@
 function hs_coadd_sdss_robust, prep_file, plot=plot, error=error, $
     niter=niter, nevec=nevec, save_fits=save_fits, $
     blue_cut=blue_cut, red_cut=red_cut, hvdisp_home=hvdisp_home, $ 
-    n_repeat=n_repeat, test_str=test_str
+    n_repeat=n_repeat, test_str=test_str, $ 
+    min_wave_hard=min_wave_hard, max_wave_hard=max_wave_hard
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if NOT keyword_set( hvdisp_home ) then begin 
@@ -98,8 +101,20 @@ function hs_coadd_sdss_robust, prep_file, plot=plot, error=error, $
             ;; Trim the data 
             min_wave = min( wave )
             max_wave = max( wave )
-            index_use = where( ( wave GE ( min_wave + edge0 ) ) AND $
-                ( wave LE ( max_wave - edge1 ) ) )
+            if keyword_set( min_wave_hard ) then begin 
+                min_wave_hard = float( min_wave_hard ) 
+            endif else begin 
+                min_wave_hard = min_wave 
+            endelse
+            if keyword_set( max_wave_hard ) then begin 
+                max_wave_hard = float( max_wave_hard ) 
+            endif else begin 
+                max_wave_hard = max_wave 
+            endelse
+            new_min_wave = ( min_wave + edge0 ) > min_wave_hard
+            new_max_wave = ( max_wave - edge1 ) < max_wave_hard
+            index_use = where( ( wave GE new_min_wave ) AND $
+                ( wave LE new_max_wave ) )
             if ( index_use[0] NE -1 ) then begin 
                 new_wave = wave[ index_use ]
                 flux = flux[ index_use, * ]
@@ -185,24 +200,28 @@ function hs_coadd_sdss_robust, prep_file, plot=plot, error=error, $
         xrange = [ min_wave, max_wave ]
         yrange = [ ( min( pca_mean ) * 0.99 ), ( max( pca_mean ) * 1.20 ) ]
         
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         cgPlot, new_wave, pca_mean, xstyle=1, ystyle=1, $
             xthick=10.0, ythick=10.0, xrange=xrange, yrange=yrange, $
             xtitle='Wavelength (Angstrom)', ytitle='Flux (Normalized)', $
             position=[ 0.07, 0.12, 0.99, 0.99 ], thick=2.5, $
             charsize=3.5, charthick=9.5, xticklen=0.03, yticklen=0.01, $
             /noerase, /nodata
-
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; Overplot interesting index 
-        hs_spec_index_over, loc_indexlis + 'hs_index_plot.lis', /center_line
-
+        hs_spec_index_over, loc_indexlis + 'hs_index_plot.lis', /center_line, $
+            line_center=2, color_center='TAN5'
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;cgPlot, wave, low_mean, /overplot, thick=2.0, $
         ;    color=cgColor( 'Red' )
         ;cgPlot, wave, upp_mean, /overplot, thick=2.0, $
         ;    color=cgColor( 'Red' )
-        cgPlot, new_wave, pca_mean, /overplot, thick=3.5, color=cgColor( 'Black' )
-
+        cgPlot, new_wave, pca_mean, /overplot, thick=5.0, $
+            color=cgColor( 'Black' )
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; Label for index
         hs_spec_index_over, loc_indexlis + 'hs_index_plot.lis', /label_only
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
         cgPlot, new_wave, pca_mean, xstyle=1, ystyle=1, $
             xthick=10.0, ythick=10.0, xrange=xrange, yrange=yrange, $
@@ -221,123 +240,240 @@ function hs_coadd_sdss_robust, prep_file, plot=plot, error=error, $
     ;; Second plot 
     if keyword_set( plot ) then begin 
 
-        psxsize = 30 
-        psysize = 30 
+        psxsize = 32 
+        psysize = 38 
         mydevice = !d.name 
         !p.font=1
         set_plot, 'ps' 
         device, filename=pca_figure2, font_size=9.0, /encapsulated, $
             /color, set_font='TIMES-ROMAN', /bold, xsize=psxsize, ysize=psysize
-        
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        pc1 = [ 0.10, 0.835, 0.99, 0.997 ]
+        pc2 = [ 0.10, 0.688, 0.99, 0.835 ]
+        pc3 = [ 0.10, 0.541, 0.99, 0.688 ]
+        pc4 = [ 0.10, 0.394, 0.99, 0.541 ]
+        pc5 = [ 0.10, 0.247, 0.99, 0.394 ]
+        pc6 = [ 0.10, 0.100, 0.99, 0.247 ]
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        min_x = min( new_wave ) 
+        max_x = max( new_wave ) 
+        sep_x = ( max_x - min_x )
+        xrange = [ ( min_x - sep_x / 80 ), ( max_x + sep_x / 80 ) ]  
+        index_check = where( ( new_wave GE ( min_wave + sep_x * 0.74 ) ) AND $
+                             ( new_wave LE ( min_wave + sep_x * 0.80 ) ) )
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        txt_x = 0.740 
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; PC 6
-        yrange = [ ( min( pca_evectors[*,5] ) * 0.99 ), $
-                   ( max( pca_evectors[*,5] ) * 1.05 ) ]
+        min_y = min( pca_evectors[ *, 5 ] ) 
+        max_y = max( pca_evectors[ *, 5 ] ) 
+        sep_y = ( ( max_y - min_y ) / 4.0 )
+        mid_y = ( ( max_y + min_y ) / 2.0 )
+        yrange = [ ( min_y - sep_y ), ( max_y + sep_y ) ]
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         cgPlot, new_wave, pca_evectors[*,5], xstyle=1, ystyle=1, yrange=yrange, $
-            position=[ 0.10, 0.100, 0.99, 0.247 ], xthick=6.0, ythick=6.0, $
+            position=pc6, xthick=6.0, ythick=6.0, xrange=xrange, $
             charsize=2.5, charthick=6.0, xtitle='Wavelength (Angstrom)', $
-            ytitle='PC6', $
-            /noerase, xticklen=0.04, yticklen=0.01, thick=2.5
+            ytitle='PC6', yminor=-1, $
+            /noerase, xticklen=0.08, yticklen=0.01, thick=2.5
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; Overplot interesting index 
-        hs_spec_index_over, loc_indexlis + 'hs_index_plot.lis', /center_line
-        cgText, 0.650, 0.222, $
-            string( pca_eval[5] ) + ' ' + string( pca_vars[5] ), /normal, $
+        hs_spec_index_over, loc_indexlis + 'hs_index_plot.lis', /center_line, $
+            line_center=2, color_center='TAN5'
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        if ( median( pca_evectors[ index_check, 5 ] ) LT mid_y ) then begin 
+            txt_y = pc6[ 3 ] - 0.025 
+        endif else begin 
+            txt_y = pc6[ 1 ] + 0.013 
+        endelse
+        cgText, txt_x, txt_y, $
+            string( pca_eval[5], format='(F7.4)' ) + ' ' + $
+            string( pca_vars[5], format='(F7.4)' ), /normal, $
             charsize=2.5, charthick=6.0, alignment=0
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         cgPlot, new_wave, pca_evectors[*,5], xstyle=1, ystyle=1, yrange=yrange, $
-            position=[ 0.10, 0.100, 0.99, 0.247 ], xthick=6.0, ythick=6.0, $
+            position=pc6, xthick=6.0, ythick=6.0, xrange=xrange, $
             charsize=2.5, charthick=6.0, xtitle='Wavelength (Angstrom)', $
-            ytitle='PC6', $
-            /noerase, xticklen=0.04, yticklen=0.01, thick=2.5
+            ytitle='PC6', yminor=-1, $
+            /noerase, xticklen=0.08, yticklen=0.01, thick=2.5
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; PC5
-        yrange = [ ( min( pca_evectors[*,4] ) * 0.99 ), $
-                   ( max( pca_evectors[*,4] ) * 1.05 ) ]
+        min_y = min( pca_evectors[ *, 4 ] ) 
+        max_y = max( pca_evectors[ *, 4 ] ) 
+        sep_y = ( ( max_y - min_y ) / 4.0 )
+        mid_y = ( ( max_y + min_y ) / 2.0 )
+        yrange = [ ( min_y - sep_y ), ( max_y + sep_y ) ]
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         cgPlot, new_wave, pca_evectors[*,4], xstyle=1, ystyle=1, yrange=yrange, $
-            position=[ 0.10, 0.247, 0.99, 0.394 ], xthick=6.0, ythick=6.0, $
+            position=pc5, xthick=6.0, ythick=6.0, xrange=xrange,  $
             charsize=2.5, charthick=6.0, xtickformat='(A1)', $
-            ytitle='PC5', $ 
-            /noerase, xticklen=0.04, yticklen=0.01, thick=2.5
+            ytitle='PC5', yminor=-1, $ 
+            /noerase, xticklen=0.08, yticklen=0.01, thick=2.5
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; Overplot interesting index 
-        hs_spec_index_over, loc_indexlis + 'hs_index_plot.lis', /center_line
-        cgText, 0.650, 0.369, $
-            string( pca_eval[4] ) + ' ' + string( pca_vars[4] ), /normal, $
+        hs_spec_index_over, loc_indexlis + 'hs_index_plot.lis', /center_line, $
+            line_center=2, color_center='TAN5'
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        if ( median( pca_evectors[ index_check, 4 ] ) LT mid_y ) then begin 
+            txt_y = pc5[ 3 ] - 0.025 
+        endif else begin 
+            txt_y = pc5[ 1 ] + 0.013 
+        endelse
+        cgText, txt_x, txt_y, $
+            string( pca_eval[4], format='(F7.4)' ) + ' ' + $
+            string( pca_vars[4], format='(F7.4)' ), /normal, $
             charsize=2.5, charthick=6.0, alignment=0
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         cgPlot, new_wave, pca_evectors[*,4], xstyle=1, ystyle=1, yrange=yrange, $
-            position=[ 0.10, 0.247, 0.99, 0.394 ], xthick=6.0, ythick=6.0, $
+            position=pc5, xthick=6.0, ythick=6.0, xrange=xrange,  $
             charsize=2.5, charthick=6.0, xtickformat='(A1)', $
-            ytitle='PC5', $ 
-            /noerase, xticklen=0.04, yticklen=0.01, thick=2.5
+            ytitle='PC5', yminor=-1, $
+            /noerase, xticklen=0.08, yticklen=0.01, thick=2.5
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; PC4
-        yrange = [ ( min( pca_evectors[*,3] ) * 0.99 ), $
-                   ( max( pca_evectors[*,3] ) * 1.05 ) ]
+        min_y = min( pca_evectors[ *, 3 ] ) 
+        max_y = max( pca_evectors[ *, 3 ] ) 
+        sep_y = ( ( max_y - min_y ) / 4.0 )
+        mid_y = ( ( max_y + min_y ) / 2.0 )
+        yrange = [ ( min_y - sep_y ), ( max_y + sep_y ) ]
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         cgPlot, new_wave, pca_evectors[*,3], xstyle=1, ystyle=1, yrange=yrange, $
-            position=[ 0.10, 0.394, 0.99, 0.541 ], xthick=6.0, ythick=6.0, $
+            position=pc4, xthick=6.0, ythick=6.0, xrange=xrange,  $
             charsize=2.5, charthick=6.0, xtickformat='(A1)', $
-            ytitle='PC4', $ 
-            /noerase, xticklen=0.04, yticklen=0.01, thick=2.5
+            ytitle='PC4', yminor=-1, $
+            /noerase, xticklen=0.08, yticklen=0.01, thick=2.5
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; Overplot interesting index 
-        hs_spec_index_over, loc_indexlis + 'hs_index_plot.lis', /center_line
-        cgText, 0.650, 0.516, $
-            string( pca_eval[3] ) + ' ' + string( pca_vars[3] ), /normal, $
+        hs_spec_index_over, loc_indexlis + 'hs_index_plot.lis', /center_line, $
+            line_center=2, color_center='TAN5'
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        if ( median( pca_evectors[ index_check, 3 ] ) LT mid_y ) then begin 
+            txt_y = pc4[ 3 ] - 0.025 
+        endif else begin 
+            txt_y = pc4[ 1 ] + 0.013 
+        endelse
+        cgText, txt_x, txt_y, $
+            string( pca_eval[3], format='(F7.4)' ) + ' ' + $
+            string( pca_vars[3], format='(F7.4)' ), /normal, $
             charsize=2.5, charthick=6.0, alignment=0
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         cgPlot, new_wave, pca_evectors[*,3], xstyle=1, ystyle=1, yrange=yrange, $
-            position=[ 0.10, 0.394, 0.99, 0.541 ], xthick=6.0, ythick=6.0, $
+            position=pc4, xthick=6.0, ythick=6.0, xrange=xrange,  $
             charsize=2.5, charthick=6.0, xtickformat='(A1)', $
-            ytitle='PC4', $ 
-            /noerase, xticklen=0.04, yticklen=0.01, thick=2.5
+            ytitle='PC4', yminor=-1, $
+            /noerase, xticklen=0.08, yticklen=0.01, thick=2.5
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; PC3
-        yrange = [ ( min( pca_evectors[*,2] ) * 0.99 ), $
-                   ( max( pca_evectors[*,2] ) * 1.05 ) ]
+        min_y = min( pca_evectors[ *, 2 ] ) 
+        max_y = max( pca_evectors[ *, 2 ] ) 
+        sep_y = ( ( max_y - min_y ) / 4.0 )
+        mid_y = ( ( max_y + min_y ) / 2.0 )
+        yrange = [ ( min_y - sep_y ), ( max_y + sep_y ) ]
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         cgPlot, new_wave, pca_evectors[*,2], xstyle=1, ystyle=1, yrange=yrange, $
-            position=[ 0.10, 0.541, 0.99, 0.688 ], xthick=6.0, ythick=6.0, $
+            position=pc3, xthick=6.0, ythick=6.0, xrange=xrange,  $
             charsize=2.5, charthick=6.0, xtickformat='(A1)', $
-            ytitle='PC3', $ 
-            /noerase, xticklen=0.04, yticklen=0.01, thick=2.5
+            ytitle='PC3', yminor=-1, $
+            /noerase, xticklen=0.08, yticklen=0.01, thick=2.5
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; Overplot interesting index 
-        hs_spec_index_over, loc_indexlis + 'hs_index_plot.lis', /center_line
-        cgText, 0.650, 0.663, $
-            string( pca_eval[2] ) + ' ' + string( pca_vars[2] ), /normal, $
+        hs_spec_index_over, loc_indexlis + 'hs_index_plot.lis', /center_line, $
+            line_center=2, color_center='TAN5'
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        if ( median( pca_evectors[ index_check, 2 ] ) LT mid_y ) then begin 
+            txt_y = pc3[ 3 ] - 0.025 
+        endif else begin 
+            txt_y = pc3[ 1 ] + 0.013 
+        endelse
+        cgText, txt_x, txt_y, $
+            string( pca_eval[2], format='(F7.4)' ) + ' ' + $
+            string( pca_vars[2], format='(F7.4)' ), /normal, $
             charsize=2.5, charthick=6.0, alignment=0
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         cgPlot, new_wave, pca_evectors[*,2], xstyle=1, ystyle=1, yrange=yrange, $
-            position=[ 0.10, 0.541, 0.99, 0.688 ], xthick=6.0, ythick=6.0, $
+            position=pc3, xthick=6.0, ythick=6.0, xrange=xrange,  $
             charsize=2.5, charthick=6.0, xtickformat='(A1)', $
-            ytitle='PC3', $ 
-            /noerase, xticklen=0.04, yticklen=0.01, thick=2.5
+            ytitle='PC3', yminor=-1, $
+            /noerase, xticklen=0.08, yticklen=0.01, thick=2.5
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; PC2
-        yrange = [ ( min( pca_evectors[*,1] ) * 0.99 ), $
-                   ( max( pca_evectors[*,1] ) * 1.05 ) ]
+        min_y = min( pca_evectors[ *, 1 ] ) 
+        max_y = max( pca_evectors[ *, 1 ] ) 
+        sep_y = ( ( max_y - min_y ) / 4.0 )
+        mid_y = ( ( max_y + min_y ) / 2.0 )
+        yrange = [ ( min_y - sep_y ), ( max_y + sep_y ) ]
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         cgPlot, new_wave, pca_evectors[*,1], xstyle=1, ystyle=1, yrange=yrange, $
-            position=[ 0.10, 0.688, 0.99, 0.835 ], xthick=6.0, ythick=6.0, $
+            position=pc2, xthick=6.0, ythick=6.0, xrange=xrange,  $
             charsize=2.5, charthick=6.0, xtickformat='(A1)', $
-            ytitle='PC2', $ 
-            /noerase, xticklen=0.04, yticklen=0.01, thick=2.5
+            ytitle='PC2', yminor=-1, $
+            /noerase, xticklen=0.08, yticklen=0.01, thick=2.5
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; Overplot interesting index 
-        hs_spec_index_over, loc_indexlis + 'hs_index_plot.lis', /center_line
-        cgText, 0.650, 0.810, $
-            string( pca_eval[1] ) + ' ' + string( pca_vars[1] ), /normal, $
+        hs_spec_index_over, loc_indexlis + 'hs_index_plot.lis', /center_line, $
+            line_center=2, color_center='TAN5'
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        if ( median( pca_evectors[ index_check, 1 ] ) LT mid_y ) then begin 
+            txt_y = pc2[ 3 ] - 0.025 
+        endif else begin 
+            txt_y = pc2[ 1 ] + 0.013 
+        endelse
+        cgText, txt_x, txt_y, $
+            string( pca_eval[1], format='(F7.4)' ) + ' ' + $
+            string( pca_vars[1], format='(F7.4)' ), /normal, $
             charsize=2.5, charthick=6.0, alignment=0
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         cgPlot, new_wave, pca_evectors[*,1], xstyle=1, ystyle=1, yrange=yrange, $
-            position=[ 0.10, 0.688, 0.99, 0.835 ], xthick=6.0, ythick=6.0, $
+            position=pc2, xthick=6.0, ythick=6.0, xrange=xrange,  $
             charsize=2.5, charthick=6.0, xtickformat='(A1)', $
-            ytitle='PC2', $ 
-            /noerase, xticklen=0.04, yticklen=0.01, thick=2.5
+            ytitle='PC2', yminor=-1, $
+            /noerase, xticklen=0.08, yticklen=0.01, thick=2.5
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; PC1
-        yrange = [ ( min( pca_evectors[*,0] ) * 0.99 ), $
-                   ( max( pca_evectors[*,0] ) * 1.50 ) ]
+        min_y = min( pca_evectors[ *, 0 ] ) 
+        max_y = max( pca_evectors[ *, 0 ] ) 
+        sep_y = ( ( max_y - min_y ) / 4.0 )
+        mid_y = ( ( max_y + min_y ) / 2.0 )
+        yrange = [ ( min_y - sep_y ), ( max_y + sep_y * 2.65 ) ]
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         cgPlot, new_wave, pca_evectors[*,0], xstyle=1, ystyle=1, yrange=yrange, $
-            position=[ 0.10, 0.835, 0.99, 0.982 ], xthick=6.0, ythick=6.0, $
+            position=pc1, xthick=6.0, ythick=6.0, xrange=xrange,  $
             charsize=2.5, charthick=6.0, xtickformat='(A1)', $
-            ytitle='PC1', $ 
-            /noerase, xticklen=0.04, yticklen=0.01, thick=2.5
+            ytitle='PC1', yminor=-1, $
+            /noerase, xticklen=0.08, yticklen=0.01, thick=2.5
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; Overplot interesting index 
-        hs_spec_index_over, loc_indexlis + 'hs_index_plot.lis', /center_line
-        cgText, 0.650, 0.957, $
-            string( pca_eval[0] ) + ' ' + string( pca_vars[0] ), /normal, $
+        hs_spec_index_over, loc_indexlis + 'hs_index_plot.lis', /center_line, $
+            line_center=2, color_center='TAN5'
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        if ( median( pca_evectors[ index_check, 0 ] ) LT mid_y ) then begin 
+            txt_y = pc1[ 3 ] - 0.045 
+        endif else begin 
+            txt_y = pc1[ 1 ] + 0.013 
+        endelse
+        cgText, txt_x, txt_y, $
+            string( pca_eval[0], format='(F7.4)' ) + ' ' + $
+            string( pca_vars[0], format='(F7.4)' ), /normal, $
             charsize=2.5, charthick=6.0, alignment=0
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; Label for index
+        hs_spec_index_over, loc_indexlis + 'hs_index_plot.lis', /label_only, $
+            charsize=1.1, ystep=26
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         cgPlot, new_wave, pca_evectors[*,0], xstyle=1, ystyle=1, yrange=yrange, $
-            position=[ 0.10, 0.835, 0.99, 0.982 ], xthick=6.0, ythick=6.0, $
+            position=pc1, xthick=6.0, ythick=6.0, xrange=xrange,  $
             charsize=2.5, charthick=6.0, xtickformat='(A1)', $
-            ytitle='PC1', $ 
-            /noerase, xticklen=0.04, yticklen=0.01, thick=2.5
+            ytitle='PC1', yminor=-1, $
+            /noerase, xticklen=0.08, yticklen=0.01, thick=2.5
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
         device, /close 
         set_plot, mydevice 

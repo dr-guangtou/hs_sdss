@@ -22,7 +22,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
-    hvdisp_home=hvdisp_home, avg_boot=avg_boot, test_str=test_str
+    hvdisp_home=hvdisp_home, avg_boot=avg_boot, test_str=test_str 
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if NOT keyword_set( hvdisp_home ) then begin 
@@ -186,6 +186,7 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
     index_comf = where( ( wave GE ( min( wave ) + 60 ) ) AND $
                         ( wave LE ( max( wave ) - 80 ) ) )
     wave_comf = wave[ index_comf ]
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     med_min_comf = med_min[ index_comf ]
     med_max_comf = med_max[ index_comf ]
     med_low_comf = med_low[ index_comf ]
@@ -199,19 +200,48 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
     index_safe = where( ( wave GE wave_safe0 ) AND ( wave LE wave_safe1 ) )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Diff array
+    diff_lam = wave[ index_good_3 ]
     diff_arr = ( ( med_arr[ index_good_3 ] - rob_arr[ index_good_3 ] ) / $
-        med_arr[ index_good_3 ] ) * 100.0
+        rob_arr[ index_good_3 ] ) * 100.0
     min_diff = min( diff_arr[ index_safe ] ) > ( -2.90 ) 
     min_diff = min_diff < ( -0.09 )
     max_diff = max( diff_arr[ index_safe ] )
     diff_sep = ( max_diff - min_diff ) 
-    diff_range = [ min_diff, ( max_diff + diff_sep / 15.0 ) ]
+    diff_range = [ ( min_diff - diff_sep / 8.0 ), $
+                   ( max_diff + diff_sep / 8.0 ) ]
+    ;; Ugly, Ugly method... TODO
+    diff_sep += ( diff_sep / 4.0 ) 
+    ;;
+    if ( diff_sep LT 4.999 ) then begin 
+        diff_inter = 1.0 
+    endif 
+    if ( diff_sep LT 2.499 ) then begin 
+        diff_inter = 0.6 
+    endif 
+    if ( diff_sep LT 2.299 ) then begin 
+        diff_inter = 0.5 
+    endif 
+    if ( diff_sep LT 1.999 ) then begin 
+        diff_inter = 0.4 
+    endif 
+    if ( diff_sep LT 1.499 ) then begin 
+        diff_inter = 0.3 
+    endif 
+    if ( diff_sep LT 0.899 ) then begin 
+        diff_inter = 0.2 
+    endif 
+    if ( diff_sep LT 0.499 ) then begin 
+        diff_inter = 0.1 
+    endif 
+    if ( diff_sep LT 0.249 ) then begin 
+        diff_inter = 0.05 
+    endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Flux  
     min_flux_1 = min( rob_arr ) 
     max_flux_1 = max( rob_arr )
     flux_sep_1 = ( max_flux_1 - min_flux_1 ) 
-    flux_range_1 = [ ( min_flux_1 - flux_sep_1 / 40.0 ), $
+    flux_range_1 = [ ( min_flux_1 - flux_sep_1 / 35.0 ), $
                      ( max_flux_1 + flux_sep_1 / 2.8  ) ]
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     min_flux_2 = min( lofen[ index_comf ] ) 
@@ -222,7 +252,7 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Fraction 
     min_frac = min( frac ) < 0.502 
-    max_frac = 0.999 
+    max_frac = 1.09 
     frac_range = [ min_frac, max_frac ] 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; S/N 
@@ -231,7 +261,9 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
     max_snr = max( snr[ where( finite( snr ) EQ 1 ) ] )
     med_snr = median( snr[ where( finite( snr ) EQ 1 ) ] )
     snr_sep = ( max_snr - min_snr ) 
-    snr_range = [ ( min_snr - snr_sep / 10.0 ), ( max_snr + snr_sep / 10.0 ) ]
+    min_snr_show = ( min_snr - snr_sep / 10.0 ) > 0.8
+    max_snr_show = ( max_snr + snr_sep /  6.0 )
+    snr_range = [ min_snr_show, max_snr_show ] 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -263,7 +295,8 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Overplot interesting index 
     if ( list_find EQ 1 ) then begin 
-        hs_spec_index_over, index_list, /center_line
+        hs_spec_index_over, index_list, /center_line, line_center=0, $
+            color_center='TAN3'
     endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Shade over the bootstrap region 
@@ -272,16 +305,16 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
         color=cgColor( 'BLK4' )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Highlight the safe range 
-    cgOPlot, [ wave_safe0, wave_safe0 ], !Y.Crange, linestyle=2, $
-        thick=5.0, color=cgColor( 'GREEN' )
-    cgOPlot, [ wave_safe1, wave_safe1 ], !Y.Crange, linestyle=2, $
-        thick=5.0, color=cgColor( 'GREEN' )
+    cgOPlot, [ wave_safe0, wave_safe0 ], !Y.Crange, linestyle=5, $
+        thick=5.0, color=cgColor( 'GRN4' )
+    cgOPlot, [ wave_safe1, wave_safe1 ], !Y.Crange, linestyle=5, $
+        thick=5.0, color=cgColor( 'GRN4' )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Highlight the normalization range
-    cgOPlot, [ min_norm, min_norm ], !Y.Crange, linestyle=2, $
-        thick=5.0, color=cgColor( 'ORANGE' )
-    cgOPlot, [ max_norm, max_norm ], !Y.Crange, linestyle=2, $
-        thick=5.0, color=cgColor( 'ORANGE' )
+    cgOPlot, [ min_norm, min_norm ], !Y.Crange, linestyle=5, $
+        thick=5.0, color=cgColor( 'BLU3' )
+    cgOPlot, [ max_norm, max_norm ], !Y.Crange, linestyle=5, $
+        thick=5.0, color=cgColor( 'BLU3' )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Shade over the bootstrap sigma 
     cgColorFill, [ wave_comf[0], wave_comf, reverse( wave_comf ) ], $
@@ -289,10 +322,11 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
         color=cgColor( 'GRN3' )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; The median combined spectrum
-    cgOPlot, wave, med_arr, linestyle=0, thick=2.5, color=cgColor( 'Blue' ) 
+    cgOPlot, wave, med_arr, linestyle=0, thick=4.2, color=cgColor( 'Blue' ) 
     ;;;;;;;;;;;;;;;;;;;22;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; The PCA-average spectrum
-    cgOPlot, wave, rob_arr, linestyle=0, thick=2.0, color=cgColor( 'Red' ) 
+    cgOPlot, wave[ index_good_3 ], rob_arr[ index_good_3 ], linestyle=0, $
+        thick=3.8, color=cgColor( 'Red' ) 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Overplot interesting index 
     if ( list_find EQ 1 ) then begin 
@@ -309,40 +343,41 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; 2. Difference
-    cgPlot, wave, diff_arr, xstyle=1, ystyle=1, position=position_1, $
+    cgPlot, diff_lam, diff_arr, xstyle=1, ystyle=1, position=position_1, $
         xrange=wave_range, yrange=diff_range, /noerase, /nodata, $
         xthick=12.0, ythick=12.0, charsize=2.3, charthick=10.0, $ 
         xtickformat='(A1)', ytitle='Diff (%)', $
-        xticklen=0.10, yticklen=0.01, yminor=2
+        xticklen=0.10, yticklen=0.01, yminor=2, ytickinterval=diff_inter
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Overplot interesting index 
     if ( list_find EQ 1 ) then begin 
-        hs_spec_index_over, index_list, /center_line
+        hs_spec_index_over, index_list, /center_line, line_center=2, $
+            color_center='TAN5'
     endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Highlight the safe range 
-    cgPlot, [ wave_safe0, wave_safe0 ], !Y.Crange, /overplot, linestyle=2, $
-        thick=5.0, color=cgColor( 'GREEN' )
-    cgPlot, [ wave_safe1, wave_safe1 ], !Y.Crange, /overplot, linestyle=2, $
-        thick=5.0, color=cgColor( 'GREEN' )
+    cgPlot, [ wave_safe0, wave_safe0 ], !Y.Crange, /overplot, linestyle=5, $
+        thick=5.0, color=cgColor( 'GRN4' )
+    cgPlot, [ wave_safe1, wave_safe1 ], !Y.Crange, /overplot, linestyle=5, $
+        thick=5.0, color=cgColor( 'GRN4' )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Highlight the normalization range
     cgPlot, [ min_norm, min_norm ], !Y.Crange, /overplot, linestyle=2, $
-        thick=5.0, color=cgColor( 'ORANGE' )
+        thick=5.0, color=cgColor( 'BLU3' )
     cgPlot, [ max_norm, max_norm ], !Y.Crange, /overplot, linestyle=2, $
-        thick=5.0, color=cgColor( 'ORANGE' )
+        thick=5.0, color=cgColor( 'BLU3' )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Difference 
-    cgPlot, !X.Crange, [0.0,0.0], linestyle=2, thick=5.0, /overplot, $
-        color=cgColor( 'GRAY' )
-    cgPlot, wave, diff_arr, linestyle=0, thick=3.0, $
+    cgPlot, !X.Crange, [0.0,0.0], linestyle=5, thick=5.0, /overplot, $
+        color=cgColor( 'Dark Gray' )
+    cgPlot, diff_lam, diff_arr, linestyle=0, thick=3.0, $
         color=cgColor( 'RED' ), /overplot 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    cgPlot, wave, diff_arr, xstyle=1, ystyle=1, position=position_1, $
+    cgPlot, diff_lam, diff_arr, xstyle=1, ystyle=1, position=position_1, $
         xrange=wave_range, yrange=diff_range, /noerase, /nodata, $
         xthick=12.0, ythick=12.0, charsize=2.3, charthick=10.0, $ 
         xtickformat='(A1)', ytitle='Diff (%)', $
-        xticklen=0.10, yticklen=0.01, yminor=2
+        xticklen=0.10, yticklen=0.01, yminor=2, ytickinterval=diff_inter
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -355,25 +390,26 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Overplot interesting index 
     if ( list_find EQ 1 ) then begin 
-        hs_spec_index_over, index_list, /center_line
+        hs_spec_index_over, index_list, /center_line, line_center=2, $
+            color_center='TAN5'
     endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Highlight the safe range 
-    cgPlot, [ wave_safe0, wave_safe0 ], !Y.Crange, /overplot, linestyle=2, $
-        thick=5.0, color=cgColor( 'GREEN' )
-    cgPlot, [ wave_safe1, wave_safe1 ], !Y.Crange, /overplot, linestyle=2, $
-        thick=5.0, color=cgColor( 'GREEN' )
+    cgPlot, [ wave_safe0, wave_safe0 ], !Y.Crange, /overplot, linestyle=5, $
+        thick=5.0, color=cgColor( 'GRN4' )
+    cgPlot, [ wave_safe1, wave_safe1 ], !Y.Crange, /overplot, linestyle=5, $
+        thick=5.0, color=cgColor( 'GRN4' )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Highlight the normalization range
     cgPlot, [ min_norm, min_norm ], !Y.Crange, /overplot, linestyle=2, $
-        thick=5.0, color=cgColor( 'ORANGE' )
+        thick=5.0, color=cgColor( 'BLU3' )
     cgPlot, [ max_norm, max_norm ], !Y.Crange, /overplot, linestyle=2, $
-        thick=5.0, color=cgColor( 'ORANGE' )
+        thick=5.0, color=cgColor( 'BLU3' )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; S/N
-    cgPlot, !X.Crange, [ med_snr, med_snr ], linestyle=2, thick=5.0, /overplot, $
-        color=cgColor( 'DARK GRAY' )
-    cgPlot, wave, snr, linestyle=0, thick=4.0, color=cgColor( 'BLACK' ), $
+    cgPlot, !X.Crange, [ med_snr, med_snr ], linestyle=5, thick=4.0, $
+        /overplot, color=cgColor( 'DARK GRAY' )
+    cgPlot, wave, snr, linestyle=0, thick=4.5, color=cgColor( 'BLU7' ), $
         /overplot 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     cgPlot, wave, snr, xstyle=1, ystyle=1, position=position_2, $
@@ -393,23 +429,27 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Overplot interesting index 
     if ( list_find EQ 1 ) then begin 
-        hs_spec_index_over, index_list, /center_line
+        hs_spec_index_over, index_list, /center_line, line_center=2, $
+            color_center='TAN5'
     endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Highlight the safe range 
-    cgPlot, [ wave_safe0, wave_safe0 ], !Y.Crange, /overplot, linestyle=2, $
-        thick=5.0, color=cgColor( 'GREEN' )
-    cgPlot, [ wave_safe1, wave_safe1 ], !Y.Crange, /overplot, linestyle=2, $
-        thick=5.0, color=cgColor( 'GREEN' )
+    cgPlot, [ wave_safe0, wave_safe0 ], !Y.Crange, /overplot, linestyle=5, $
+        thick=5.0, color=cgColor( 'GRN4' )
+    cgPlot, [ wave_safe1, wave_safe1 ], !Y.Crange, /overplot, linestyle=5, $
+        thick=5.0, color=cgColor( 'GRN4' )
     ;; Highlight the normalization range
     cgPlot, [ min_norm, min_norm ], !Y.Crange, /overplot, linestyle=2, $
-        thick=5.0, color=cgColor( 'ORANGE' )
+        thick=5.0, color=cgColor( 'BLU3' )
     cgPlot, [ max_norm, max_norm ], !Y.Crange, /overplot, linestyle=2, $
-        thick=5.0, color=cgColor( 'ORANGE' )
+        thick=5.0, color=cgColor( 'BLU3' )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Fraction
-    cgPlot, wave, frac, linestyle=0, thick=4.0, color=cgColor( 'BLACK' ), $
+    cgPlot, !X.Crange, [ 1.0, 1.0 ], linestyle=5, thick=4.0, /overplot, $
+        color=cgColor( 'DARK GRAY' )
+    cgPlot, wave, frac, linestyle=0, thick=5.0, color=cgColor( 'BLU7' ), $
         /overplot 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     cgPlot, wave, frac, xstyle=1, ystyle=1, position=position_3, $
         xrange=wave_range, yrange=frac_range, /noerase, /nodata, $
         xthick=12.0, ythick=12.0, charsize=3.0, charthick=10.0, $ 
@@ -500,9 +540,22 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
         xtitle='Wavelength (Angstrom)', ytitle='Flux (Normalized)', $
         xticklen=0.03, yticklen=0.01 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Highlight the safe range 
+    cgPlot, [ wave_safe0, wave_safe0 ], !Y.Crange, /overplot, linestyle=5, $
+        thick=5.0, color=cgColor( 'GRN4' )
+    cgPlot, [ wave_safe1, wave_safe1 ], !Y.Crange, /overplot, linestyle=5, $
+        thick=5.0, color=cgColor( 'GRN4' )
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Highlight the normalization range
+    cgPlot, [ min_norm, min_norm ], !Y.Crange, /overplot, linestyle=5, $
+        thick=5.0, color=cgColor( 'BLU3' )
+    cgPlot, [ max_norm, max_norm ], !Y.Crange, /overplot, linestyle=5, $
+        thick=5.0, color=cgColor( 'BLU3' )
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Overplot interesting index 
     if ( list_find EQ 1 ) then begin 
-        hs_spec_index_over, index_list, /center_line
+        hs_spec_index_over, index_list, /center_line, color_center='TAN5', $
+            line_center=0
     endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Shade over the outer-fence region 
@@ -523,18 +576,6 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
         [lquar[ index_comf[0] ], lquar[ index_comf ], $
         reverse( uquar[ index_comf ] ) ], color=cgColor( 'RED3' )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; Highlight the safe range 
-    cgPlot, [ wave_safe0, wave_safe0 ], !Y.Crange, /overplot, linestyle=2, $
-        thick=5.0, color=cgColor( 'GREEN' )
-    cgPlot, [ wave_safe1, wave_safe1 ], !Y.Crange, /overplot, linestyle=2, $
-        thick=5.0, color=cgColor( 'GREEN' )
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; Highlight the normalization range
-    cgPlot, [ min_norm, min_norm ], !Y.Crange, /overplot, linestyle=2, $
-        thick=5.0, color=cgColor( 'ORANGE' )
-    cgPlot, [ max_norm, max_norm ], !Y.Crange, /overplot, linestyle=2, $
-        thick=5.0, color=cgColor( 'ORANGE' )
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Shade over the bootstrap region 
     cgColorFill, [ wave[ index_comf[0] ], wave[ index_comf ], $
         reverse( wave[ index_comf ] ) ], $
@@ -542,7 +583,7 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
         reverse( med_max[ index_comf ] ) ], color=cgColor( 'GRN3' )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; The median combined spectrum
-    cgPlot, wave, med_arr, linestyle=0, thick=2.5, /overplot, $ 
+    cgPlot, wave, med_arr, linestyle=0, thick=3.0, /overplot, $ 
         color=cgColor( 'Blue' ) 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Overplot interesting index 

@@ -66,7 +66,7 @@ pro hs_spec_index_over, list, label_over=label_over, $
     color_line=color_line, color_fill=color_fill, color_char=color_char, $
     short_bar=short_bar, label_only=label_only, charsize=charsize, $
     xstep=xstep, ystep=ystep, max_overlap=max_overlap, l_cushion=l_cushion, $
-    color_center=color_center
+    color_center=color_center, line_center=line_center
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Check input list 
@@ -124,7 +124,12 @@ pro hs_spec_index_over, list, label_over=label_over, $
     if keyword_set( color_center ) then begin 
         color_center = string( color_center ) 
     endif else begin 
-        color_center = 'BLK5'
+        color_center = 'BLK3'
+    endelse
+    if keyword_set( line_center ) then begin 
+        line_center = long( line_center ) 
+    endif else begin 
+        line_center = 2
     endelse
     ;; Set the charsize 
     if keyword_set( charsize ) then begin 
@@ -212,8 +217,9 @@ pro hs_spec_index_over, list, label_over=label_over, $
                     if keyword_set( center_line ) then begin 
                         lam_cen = ( ( lam0 + lam1 ) / 2.0 )
                         cgPlots, [ lam_cen, lam_cen ], !Y.Crange, /data, $
-                            linestyle=2, color=cgColor( color_center ), $ 
-                            thick=2.0
+                            linestyle=line_center, $
+                            color=cgColor( color_center ), $ 
+                            thick=1.8
                     endif
                 endif else begin 
                     cgPlots, [ lam0, lam1 ], [ y_pos, y_pos ], /data, $
