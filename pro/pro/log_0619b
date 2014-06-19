@@ -1,0 +1,68 @@
+  
+###############################################################
+ Coadd : /media/hs/Astro1/data/hvdisp/html/z3_s8l_html.lis
+###############################################################
+  
+###############################################################
+ MIN_WAVE_HARD :       3740.00
+ MAX_WAVE_HARD :       7760.00
+   RED_CUT     :       160.000
+   BLU_CUT     :       160.000
+  F_CUSHION    :       160.000
+###############################################################
+###########################################################
+ Prepare to co-add the spectra for : /media/hs/Astro1/data/hvdisp/coadd/z3_s8l/z3_s8l_prep.fits !
+###########################################################
+###########################################################
+   Co-add the spectra using Robust-PCA method !!
+###########################################################
+VWPCA: 1364-object x 4021-data array 
+VWPCA: will return 6 PCA amplitudes
+VWPCA: iteration number        0
+VWPCA: iteration number        1
+VWPCA: iteration number        2
+VWPCA: iteration number        3
+VWPCA: iteration number        4
+###########################################################
+   Co-add the spectra using Median average method !!
+###########################################################
+###########################################################
+   Save the result to : /media/hs/Astro1/data/hvdisp/coadd/z3_s8l/z3_s8l_coadd.sav!
+###########################################################
+###########################################################
+   Post reduction !!
+###########################################################
+  
+###############################################################
+ Coadd : /media/hs/Astro1/data/hvdisp/html/z0_s7l_html.lis
+###############################################################
+  
+###############################################################
+ MIN_WAVE_HARD :       3740.00
+ MAX_WAVE_HARD :       8420.00
+   RED_CUT     :       160.000
+   BLU_CUT     :       160.000
+  F_CUSHION    :       160.000
+###############################################################
+###########################################################
+ Prepare to co-add the spectra for : /media/hs/Astro1/data/hvdisp/coadd/z0_s7l/z0_s7l_prep.fits !
+###########################################################
+###########################################################
+   Co-add the spectra using Robust-PCA method !!
+###########################################################
+VWPCA: 663-object x 4681-data array 
+VWPCA: will return 6 PCA amplitudes
+VWPCA: iteration number        0
+VWPCA: iteration number        1
+VWPCA: iteration number        2
+VWPCA: iteration number        3
+VWPCA: iteration number        4
+###########################################################
+   Co-add the spectra using Median average method !!
+###########################################################
+###########################################################
+   Save the result to : /media/hs/Astro1/data/hvdisp/coadd/z0_s7l/z0_s7l_coadd.sav!
+###########################################################
+###########################################################
+   Post reduction !!
+###########################################################

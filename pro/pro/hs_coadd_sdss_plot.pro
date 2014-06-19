@@ -22,7 +22,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
-    hvdisp_home=hvdisp_home, avg_boot=avg_boot, test_str=test_str
+    hvdisp_home=hvdisp_home, avg_boot=avg_boot, test_str=test_str 
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if NOT keyword_set( hvdisp_home ) then begin 
@@ -200,6 +200,7 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
     index_safe = where( ( wave GE wave_safe0 ) AND ( wave LE wave_safe1 ) )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Diff array
+    diff_lam = wave[ index_good_3 ]
     diff_arr = ( ( med_arr[ index_good_3 ] - rob_arr[ index_good_3 ] ) / $
         rob_arr[ index_good_3 ] ) * 100.0
     min_diff = min( diff_arr[ index_safe ] ) > ( -2.90 ) 
@@ -215,6 +216,9 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
         diff_inter = 1.0 
     endif 
     if ( diff_sep LT 2.499 ) then begin 
+        diff_inter = 0.6 
+    endif 
+    if ( diff_sep LT 2.299 ) then begin 
         diff_inter = 0.5 
     endif 
     if ( diff_sep LT 1.999 ) then begin 
@@ -222,6 +226,9 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
     endif 
     if ( diff_sep LT 1.499 ) then begin 
         diff_inter = 0.3 
+    endif 
+    if ( diff_sep LT 0.899 ) then begin 
+        diff_inter = 0.2 
     endif 
     if ( diff_sep LT 0.499 ) then begin 
         diff_inter = 0.1 
@@ -315,10 +322,11 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
         color=cgColor( 'GRN3' )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; The median combined spectrum
-    cgOPlot, wave, med_arr, linestyle=0, thick=4.0, color=cgColor( 'Blue' ) 
+    cgOPlot, wave, med_arr, linestyle=0, thick=4.2, color=cgColor( 'Blue' ) 
     ;;;;;;;;;;;;;;;;;;;22;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; The PCA-average spectrum
-    cgOPlot, wave, rob_arr, linestyle=0, thick=3.5, color=cgColor( 'Red' ) 
+    cgOPlot, wave[ index_good_3 ], rob_arr[ index_good_3 ], linestyle=0, $
+        thick=3.8, color=cgColor( 'Red' ) 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Overplot interesting index 
     if ( list_find EQ 1 ) then begin 
@@ -335,7 +343,7 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; 2. Difference
-    cgPlot, wave, diff_arr, xstyle=1, ystyle=1, position=position_1, $
+    cgPlot, diff_lam, diff_arr, xstyle=1, ystyle=1, position=position_1, $
         xrange=wave_range, yrange=diff_range, /noerase, /nodata, $
         xthick=12.0, ythick=12.0, charsize=2.3, charthick=10.0, $ 
         xtickformat='(A1)', ytitle='Diff (%)', $
@@ -362,10 +370,10 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
     ;; Difference 
     cgPlot, !X.Crange, [0.0,0.0], linestyle=5, thick=5.0, /overplot, $
         color=cgColor( 'Dark Gray' )
-    cgPlot, wave, diff_arr, linestyle=0, thick=3.0, $
+    cgPlot, diff_lam, diff_arr, linestyle=0, thick=3.0, $
         color=cgColor( 'RED' ), /overplot 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    cgPlot, wave, diff_arr, xstyle=1, ystyle=1, position=position_1, $
+    cgPlot, diff_lam, diff_arr, xstyle=1, ystyle=1, position=position_1, $
         xrange=wave_range, yrange=diff_range, /noerase, /nodata, $
         xthick=12.0, ythick=12.0, charsize=2.3, charthick=10.0, $ 
         xtickformat='(A1)', ytitle='Diff (%)', $
