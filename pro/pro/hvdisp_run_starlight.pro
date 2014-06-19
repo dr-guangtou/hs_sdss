@@ -20,7 +20,8 @@
 ;------------------------------------------------------------------------------
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-pro hvdisp_starlight_batch, input_list, hvdisp_home=hvdisp_home 
+pro hvdisp_starlight_batch, input_list, hvdisp_home=hvdisp_home, $
+    local_result=local_result
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     print, '###############################################################'
@@ -48,7 +49,13 @@ pro hvdisp_starlight_batch, input_list, hvdisp_home=hvdisp_home
         print, '###############################################################'
         print, '  STARLIGHT Template : ' + sl_template
         print, '###############################################################'
-        hvdisp_run_starlight, input_list, sl_template, /run_sl 
+        if keyword_set( local_result ) then begin 
+            hvdisp_run_starlight, input_list, sl_template, /run_sl, $
+                /local_result 
+        endif else begin 
+            hvdisp_run_starlight, input_list, sl_template, /run_sl 
+        endelse
+        ;;
     endfor 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     
@@ -57,7 +64,7 @@ end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 pro hvdisp_run_starlight, input_list, sl_template, hvdisp_home=hvdisp_home, $
-    sl_command=sl_command, run_sl=run_sl
+    sl_command=sl_command, run_sl=run_sl, local_result=local_result
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if keyword_set( sl_command ) then begin 
