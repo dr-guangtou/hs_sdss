@@ -1,0 +1,23 @@
+8                                                [Number of fits to run]
+/home/hs/hvdisp/lib/base/                        [base_dir]
+$DIR_OF_DATA$                                    [obs_dir]
+/home/hs/hvdisp/pro/ancil/                       [mask_dir]
+/home/hs/hvdisp/coadd/results/starlight/         [out_dir]
+1865168                                          [your phone number]
+4550.0                                           [llow_SN]   lower-lambda of S/N window
+4650.0                                           [lupp_SN]   upper-lambda of S/N window
+4030.0                                           [Olsyn_ini] lower-lambda for fit
+7400.0                                           [Olsyn_fin] upper-lambda for fit
+1.0                                              [Odlsyn]    delta-lambda for fit
+1.0                                              [fscale_chi2] fudge-factor for chi2
+FIT                                              [FIT/FXK] Fit or Fix kinematics
+0                                                [IsErrSpecAvailable]  1/0 = Yes/No
+0                                                [IsFlagSpecAvailable] 1/0 = Yes/No
+$IN_SPEC$ hvdisp_full1.config mius_ku13.base sl_mask1 CCM 80.0 350.0 $OUT_FILE$_mius_ku13.out 
+$IN_SPEC$ hvdisp_full1.config mius_un13.base sl_mask1 CCM 80.0 350.0 $OUT_FILE$_mius_un13.out 
+$IN_SPEC$ hvdisp_full1.config mius_un18.base sl_mask1 CCM 80.0 350.0 $OUT_FILE$_mius_un18.out 
+$IN_SPEC$ hvdisp_full1.config mius_un08.base sl_mask1 CCM 80.0 350.0 $OUT_FILE$_mius_un08.out 
+$IN_SPEC$ hvdisp_full1.config mius_mix1.base sl_mask1 CCM 80.0 350.0 $OUT_FILE$_mius_mix1.out 
+$IN_SPEC$ hvdisp_full1.config comb_mix1.base sl_mask1 CCM 80.0 350.0 $OUT_FILE$_comb_mix1.out 
+$IN_SPEC$ hvdisp_full1.config comb_mix2.base sl_mask1 CCM 80.0 350.0 $OUT_FILE$_comb_mix2.out 
+$IN_SPEC$ hvdisp_full1.config comb_mix2.base sl_mask1 CCM 80.0 350.0 $OUT_FILE$_comb_mix3.out 
