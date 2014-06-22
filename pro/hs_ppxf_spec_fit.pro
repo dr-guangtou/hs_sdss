@@ -58,8 +58,8 @@ pro hs_setup_ssp_library, base_file, velscale, fwhm_data, fwhm_libr, $
         message, 'Can not find the templates list : ' + base_file 
     endif else begin 
         ;; Read the information of the base file into a structure
-        base_struc = hs_starlight_read_base, base_file, $
-            lib_location=lib_location
+        base_struc = hs_starlight_read_base( base_file, $
+            lib_location=lib_location )
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Name of the spectral models
@@ -183,7 +183,7 @@ pro hs_setup_emiline, wave, fwhm_data, emiline_templates, $
     index_use = where( ( lines GT min( wave ) ) AND ( lines LT max( wave ) ) )
     if ( index_use[0] EQ -1 ) then begin 
         print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
-        print, ' No useful line is found !!!!! '
+        print, '    No useful line is found !!!!! '
         print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
         n_emi     = 0
         emi_lines = dblarr( n_pix )
@@ -217,7 +217,8 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
     save_temp=save_temp, result_file=result_file, $
     plot_result=plot_result, save_result=save_result, $
     include_emission=include_emission, mask_file=mask_file, $ 
-    regul=regul, is_flag=is_flag, is_error=is_error
+    regul=regul, error_reg=error_reg, $
+    is_flag=is_flag, is_error=is_error
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     on_error, 2
@@ -254,6 +255,13 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
         n_moments = 2
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Desired regularization error 
+    if keyword_set( error_reg ) then begin 
+        error_reg = float( error_reg ) 
+    endif else begin 
+        error_reg = 0.005
+    endelse
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if NOT keyword_set( hvdisp_home ) then begin 
@@ -263,7 +271,8 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     loc_coadd   = hvdisp_home + 'coadd/'
-    loc_templis = hvdisp_home + 'pro/lis/'
+    loc_result  = hvdisp_home + 'coadd/results/ppxf/'
+    loc_base    = hvdisp_home + 'pro/ancil/'
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -280,7 +289,7 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
     ;; Check the stellar population base file 
     base_file = strcompress( base_file, /remove_all )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    if NOT file_test( base_file ) then begin 
+    if NOT file_test( loc_base + base_file ) then begin 
         print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
         print, ' Can not find the input spectrum file : ' + base_file + ' !!!' 
         print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
@@ -321,6 +330,7 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
         name_str = name_str + '_' + base_str + '_' + suffix 
     endif else begin 
         name_str = name_str + '_' + base_str 
+    endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if keyword_set( is_error ) then begin 
         if keyword_set( is_flag ) then begin 
@@ -373,7 +383,6 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
     ;; Normalize the spectrum
     flux_norm       = median( flux_ori ) 
     flux_trim_norm  = ( flux_trim / flux_norm )
-    error_trim_norm = ( error_trim / flux_norm )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Log-Rebin the spectrum
     log_rebin, wave_range_trim, flux_trim_norm, flux_trim_log, wave_trim_log, $
@@ -382,6 +391,7 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Log-Rebin the error 
     if keyword_set( is_error ) then begin 
+        error_trim_norm = ( error_trim / flux_norm )
         log_rebin, wave_range_trim, ( error_trim_norm^2.0 ), error_temp_log, $
             wave_trim_log, velscale=velscale
         error_trim_log = SQRT( error_temp_log ) 
@@ -443,7 +453,7 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
         print, '  Use the stellar population models from ' + base_file + ' !' 
     endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    base_file = loc_templis + strcompress( base_file, /remove_all ) 
+    base_file = loc_base + strcompress( base_file, /remove_all ) 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     hs_setup_ssp_library, base_file, velscale, fwhm_data, fwhm_libr, $
         stellar_templates, wave_range_temp, wave_log_temp, base_struc, $
@@ -465,7 +475,7 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
     if keyword_set( regul ) then begin 
         ;; Please make sure the base file is appropriate !!! 
         age_arr  = base_struc.age 
-        met_arr  = base_struc.met
+        met_arr  = base_struc.metal
         age_uniq = age_arr[ uniq( age_arr, sort( age_arr ) ) ] 
         met_uniq = met_arr[ uniq( met_arr, sort( met_arr ) ) ] 
         age_num  = n_elements( age_uniq ) 
@@ -490,8 +500,8 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
         ;; that the age and metallicity is in increasing order 
         for ll = 0, ( met_num - 1 ), 1 do begin 
             for nn = 0, ( age_num - 1 ), 1 do begin 
-                ssp_use = where( ( base_struc.age EQ age_uniq[ nn ] ) AND $ 
-                                 ( base_struc.met EQ met_uniq[ ll ] ) ) 
+                ssp_use = where( ( base_struc.age   EQ age_uniq[ nn ] ) AND $ 
+                                 ( base_struc.metal EQ met_uniq[ ll ] ) ) 
                 if ( ( ssp_use[0] EQ -1 ) OR ( n_elements( ssp_use ) GT 1 ) ) $
                     then begin 
                     message, ' XXXX Something weird just happended !!! XXXX ' 
@@ -502,7 +512,10 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
             endfor  
         endfor 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        stellar_templates = new_stellar_templates
+        lib_dim = size( stellar_templates, /dim ) 
+        reg_dim = lib_dim[ 1 : * ]
+        stellar_templates = reform( new_stellar_templates, lib_dim[0], $
+            product( reg_dim ) )
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -513,7 +526,7 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
     ;; Setup the emission line library 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         if ~keyword_set( quiet ) then begin 
-            print, '###########################################################'
+            print, '##############################################################'
             print, '# SETUP THE EMISSION LINES TEMPLATES ...'
         endif 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -522,7 +535,7 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         if ~keyword_set( quiet ) then begin 
             print, num_emiline, ' emission lines have been adopted !'
-            print, '###########################################################'
+            print, '##############################################################'
         endif 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; Combine the emission line and stellar templates 
@@ -530,12 +543,15 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     endif else begin 
         if ~keyword_set( quiet ) then begin 
-            print, '###########################################################'
+            print, '###############################################################'
             print, '# No emission line is included ... ' 
-            print, '###########################################################'
+            print, '###############################################################'
         endif 
+        line_name = [ '' ] 
+        line_wave = [ 0.0 ]
+        num_emiline = 0
         templates = [ stellar_templates ]
-    endelse
+    endelse 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -559,16 +575,17 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
                 n_bad = 0 
             endelse
             if ~keyword_set( quiet ) then begin 
-                print, '###########################################################'
+                print, '###############################################################'
                 print, '# There are : ' + string( n_bad ) + ' pixels ' + $ 
                     'have been masked out !!'
-                print, '###########################################################'
+                print, '###############################################################'
             endif 
         endelse
     endif
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Define the goodpixels
     goodpixels = where( mask_arr EQ 0 )
+    badpixels  = where( mask_arr NE 0 )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -606,9 +623,16 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Assign Component=0 for stellar templates 
     ;;    and Component=1 for emission line templates
-    component = [ replicate( 0, num_stellar ) , replicate( 1, num_emiline ) ]
-    moments   = [ n_moments , n_moments ] ;; Fit (Vel, Sig ) for both stars and gas 
-    start     = [ [ start ] , [ start ] ]
+    if keyword_set( include_emission ) then begin 
+        component = [ replicate( 0, num_stellar ) , $
+                      replicate( 1, num_emiline ) ]
+        moments   = [ n_moments , n_moments ] ;; Fit (Vel, Sig ) for both stars and gas 
+        start     = [ [ start ] , [ start ] ]
+    endif else begin 
+        component = [ replicate( 0, num_stellar ) ]
+        moments   = [ n_moments ] 
+        start     = [ start ]
+    endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -618,10 +642,18 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
         print, 'START THE ACTUAL FITTING PROCEDURE ... ' 
     endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ppxf, templates, galaxy, noise, velscale, start, solutions, $
-        goodpixels=goodpixels, moments=moments, degree=-1, mdegree=mdegree, $ 
-        vsyst=dv,  weights=weights, temp_arr=temp_arr, $
-        component=component, bestfit=bestfit, /quiet
+    if keyword_set( regul ) then begin  
+        ppxf, templates, galaxy, noise, velscale, start, solutions, $
+            goodpixels=goodpixels, moments=moments, degree=-1, mdegree=mdegree, $ 
+            vsyst=dv,  weights=weights, temp_arr=temp_arr, $
+            regul=(1.0D/error_reg), reg_dim=reg_dim, $ 
+            component=component, bestfit=bestfit, /quiet
+    endif else begin 
+        ppxf, templates, galaxy, noise, velscale, start, solutions, $
+            goodpixels=goodpixels, moments=moments, degree=-1, mdegree=mdegree, $ 
+            vsyst=dv,  weights=weights, temp_arr=temp_arr, $
+            component=component, bestfit=bestfit, /quiet
+    endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if ~keyword_set( quiet ) then begin 
         print, ' Done !! '
@@ -633,23 +665,37 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
     ;; Show the results 
     n_goodpix  = n_elements( goodPixels )
     nzero_temp = n_elements( where( weights GT 0.0 ) )
-    print, '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
-    print, '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+    print, '###############################################################'
+    print, '#  RESULTS : '
+    print, '###############################################################'
     print, ' Velocity of the stellar component : ' + $
         string( solutions[ 0, 0 ], format='(F8.2)' ) + ' km/s ' 
     print, ' Veldisp of the stellar component  : ' + $
         string( solutions[ 1, 0 ], format='(F8.2)' ) + ' km/s ' 
-    print, '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
-    print, ' Velocity of the emission lines component : ' + $
-        string( solutions[ 0, 1 ], format='(F8.2)' ) + ' km/s ' 
-    print, ' Veldisp of the emission lines component  : ' + $
-        string( solutions[ 1, 1 ], format='(F8.2)' ) + ' km/s ' 
-    print, '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+    if keyword_set( include_emission ) then begin 
+        print, '###############################################################'
+        print, ' Velocity of the emission lines component : ' + $
+            string( solutions[ 0, 1 ], format='(F8.2)' ) + ' km/s ' 
+        print, ' Veldisp of the emission lines component  : ' + $
+            string( solutions[ 1, 1 ], format='(F8.2)' ) + ' km/s ' 
+        print, '###############################################################'
+    endif
+    print, ' N_Goodpixels       :  ', n_goodpix, '/', n_pixel
     print, ' Chi^2/DOF          :  ', solutions[6]
     print, ' Desired Delta Chi^2:  ', sqrt( 2 * n_goodpix )    
     print, ' Current Delta Chi^2:', ( ( solutions[6] - 1 ) * n_goodpix )
     print, ' Nonzero Templates  : ', nzero_temp 
-    print, '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+    print, '###############################################################'
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    vel_ste = solutions[ 0 , 0 ]
+    sig_ste = solutions[ 1 , 0 ]
+    if keyword_set( include_emission ) then begin 
+        vel_gas = solutions[ 1, 0 ] 
+        sig_gas = solutions[ 1, 1 ]
+    endif else begin 
+        vel_gas = 0.0 
+        sig_gas = 0.0 
+    endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -663,19 +709,14 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Save the results 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if keyword_set( save_result ) then begin 
 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         if keyword_set( result_file ) then begin 
-            result_file = spec_loc + 'ppxf/' + result_file 
+            result_file = loc_result + result_file 
         endif else begin 
-            if keyword_set( ssp_txt ) then begin 
-                result_file = spec_loc + 'ppxf/' + name_str + $
-                    '_ppxf_emirem.fits' 
-            endif else begin 
-                result_file = spec_loc + 'ppxf/' + name_str + $
-                    '_ppxf_emirem.fits' 
-            endelse
+            result_file = loc_result + name_str + '_ppxf.fits'
         endelse
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         print, '###############################################################'
@@ -688,28 +729,34 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
             mpoly:dblarr( n_pixel ),   $
             stellar:dblarr( n_pixel ), $
             emiline:dblarr( n_pixel ), $
+            goodpixels:goodpixels, $
             flux_norm:flux_norm, n_pixel:n_pixel, n_goodpix:n_goodpix, $
             sn_ratio:sn_ratio, min_wave:min_wave, max_wave:max_wave, $
-            vel_ste:solutions[0,0], sig_ste:solutions[1,0], $ 
-            vel_gas:solutions[0,1], sig_gas:solutions[1,1], $ 
+            vel_ste:vel_ste, sig_ste:sig_ste, $ 
+            vel_gas:vel_gas, sig_gas:sig_gas, $ 
             chi2:solutions[6,0], $
             component:component, weights:weights, $
             line_name:line_name, line_wave:line_wave }
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; Get the relative and absolute residual 
-        relres = ( ( ( galaxy - bestfit ) / galaxy ) * 100.0 )
-        absres = ( galaxy - bestfit )
+        relres      = ( ( ( galaxy - bestfit ) / galaxy ) * 100.0 )
+        absres      = ( galaxy - bestfit )
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; Get the final contribution for each template spectrum 
-        best_temp = temp_arr # weights 
+        best_temp   = temp_arr # weights 
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; Get the best fit stellar and emission line component
-        index_ste = where( component EQ 0 ) 
-        index_gas = where( component EQ 1 ) 
-        temp_ste = temp_arr[*,index_ste] 
-        temp_gas = temp_arr[*,index_gas]
+        index_ste   = where( component EQ 0 ) 
+        temp_ste    = temp_arr[*,index_ste] 
         weights_ste = weights[index_ste]
-        weights_gas = weights[index_gas]
-        best_ste = temp_ste # weights_ste
-        best_gas = temp_gas # weights_gas
+        best_ste    = temp_ste # weights_ste
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        if keyword_set( include_emission ) then begin 
+            index_gas   = where( component EQ 1 ) 
+            temp_gas    = temp_arr[*,index_gas]
+            weights_gas = weights[index_gas]
+            best_gas    = temp_gas # weights_gas
+        endif 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; Save the results to structures
         spec_result.wave    = wave_lin 
@@ -718,34 +765,43 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
         spec_result.rres    = relres
         spec_result.mpoly   = mpoly 
         spec_result.stellar = best_ste 
-        spec_result.emiline = best_gas 
+        if keyword_set( include_emission ) then begin 
+            spec_result.emiline = best_gas 
+        endif 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; First extension is the structure for main result  
         mwrfits, spec_result, result_file, /create    ;; dimension 0  
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         if keyword_set( save_temp ) then begin 
             ;; Second extension for whole solutions 
-            mwrfits, solutions,   result_file, /silent    ;; extension 1
+            mwrfits, solutions, result_file, /silent    ;; extension 1
             ;; Third extension for the templates
-            mwrfits, templates,   result_file, /silent    ;; extension 2
+            mwrfits, templates, result_file, /silent    ;; extension 2
         endif 
         print, '###############################################################'
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        res_range = [ min( absres ), ( max( absres ) > max( best_gas ) ) ]
 
     endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Plot  
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if keyword_set( debug ) then begin 
 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        if keyword_set( ssp_txt ) then begin 
-            result_plot = spec_loc + 'ppxf/' + name_str + '_ppxf_debug.eps' 
+        result_plot = loc_result + name_str + '_ppxf.eps' 
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        if keyword_set( include_emission ) then begin 
+            res_range = [ min( absres ), ( max( absres ) > max( best_gas ) ) ]
         endif else begin 
-            result_plot = spec_loc + 'ppxf/' + name_str + '_ppxf_debug.eps' 
+            res_range = [ min( absres ), max( absres ) ]
         endelse
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        min_y = min( [ min( galaxy ), min( bestfit ), min( mpoly ) ] )
+        max_y = max( [ max( galaxy ), max( bestfit ), max( mpoly ) ] )
+        sep_y = ( max_y - min_y )
+        yrange = [ ( min_y - 0.05 * sep_y ), ( max_y + 0.1 * sep_y ) ]
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         mydevice = !d.name 
         !p.font=1
@@ -759,7 +815,7 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
             /color, set_font='TIMES-ROMAN', /bold, xsize=psxsize, ysize=psysize
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         cgPlot, wave_ori, ( flux_ori / flux_norm ), xs=1, ys=1, /noerase, $
-            xrange=wave_range_temp, yrange=[0.12,1.19], thick=1.5, $
+            xrange=wave_range_temp, yrange=yrange, thick=1.5, $
             color=cgColor( 'BLK2' ), position=pos1, $
             xtickformat='(A1)', xthick=8, ythick=8, charthick=4, charsize=3.0, $
             /nodata, ytitle='Norm. Flux', xticklen=0.04
@@ -771,15 +827,14 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
                 color=cgColor( 'BLK2' ), thick=0.6
         endfor 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        if keyword_set( include_emission ) then begin 
         ;; Emission line templates
-        for yy = 0, ( num_emiline - 1 ), 1 do begin 
-            cgPlots, [ line_wave[yy], line_wave[yy] ], [ 0.12, 0.22 ], $
-                linestyle=0, thick=1.5, color=cgColor( 'RED5' )
-            cgText, ( line_wave[yy] + 10.0 ), 0.24, $
-                strcompress( line_name[yy], /remove_all ), $
-                alignment=0, charsize=1.2, color=cgColor( 'RED5' ), $
-                orientation=90.0
-        endfor 
+            for yy = 0, ( num_emiline - 1 ), 1 do begin 
+                cgPlots, [ line_wave[yy], line_wave[yy] ], $
+                    [ yrange[0], ( yrange[0] + 0.15 ) ], $
+                    linestyle=0, thick=1.5, color=cgColor( 'Blue' )
+            endfor 
+        endif 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; Data 
         cgOplot, wave_lin, galaxy, color=cgColor( 'BLK7' ), thick=2.0
@@ -794,7 +849,7 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
             thick=1.5
         ;;
         cgPlot, wave_ori, ( flux_ori / flux_norm ), xs=1, ys=1, /noerase, $
-            xrange=wave_range_temp, yrange=[0.12,1.19], thick=1.5, $
+            xrange=wave_range_temp, yrange=yrange, thick=1.5, $
             color=cgColor( 'BLK2' ), position=pos1, $
             xtickformat='(A1)', xthick=8, ythick=8, charthick=4, charsize=3.0, $
             /nodata, ytitle='Norm. Flux', xticklen=0.04
@@ -807,16 +862,30 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
             xtitle='Wavelength', ytitle='Res', xticklen=0.075
         cgOPlot, !X.Crange, [ 0.0, 0.0], linestyle=2, color=cgColor( 'BLK4' )
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        for yy = 0, ( num_emiline - 1 ), 1 do begin 
-            cgPlots, [ line_wave[yy], line_wave[yy] ], $
-                [ res_range[0], res_range[1] ], $
-                linestyle=2, thick=1.5, color=cgColor( 'RED4' )
-        endfor 
+        if keyword_set( include_emission ) then begin 
+            for yy = 0, ( num_emiline - 1 ), 1 do begin 
+                cgPlots, [ line_wave[yy], line_wave[yy] ], $
+                    [ res_range[0], res_range[1] ], $
+                    linestyle=2, thick=1.5, color=cgColor( 'Blue' )
+            endfor 
+        endif 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         cgOplot, wave_lin, absres, thick=1.5, linestyle=0, $
-            color=cgColor( 'BLK7' )
-        cgOplot, wave_lin, best_gas,  color=cgColor( 'Blue' ), thick=1.8, $
-            linestyle=0
+            color=cgColor( 'BLK5' )
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        if ( badpixels[0] NE -1 ) then begin 
+            wave_nan = wave_lin 
+            ares_nan = absres 
+            wave_nan[ badpixels ] = !VALUES.F_NaN
+            ares_nan[ badpixels ] = !VALUES.F_NaN
+            cgOPlot, wave_nan, ares_nan, thick=1.6, linestyle=0, $
+                color=cgColor( 'Red' )
+        endif 
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        if keyword_set( include_emission ) then begin 
+            cgOplot, wave_lin, best_gas,  color=cgColor( 'Blue' ), thick=1.8, $
+                linestyle=0
+        endif
         ;; Only for test
         ;cgOplot, wave_lin, best_diff, color=cgColor( 'Red' ),   thick=1.5, $
         ;    linestyle=0
@@ -831,6 +900,37 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
 end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+pro test_fit 
 
+    spec_file = '/home/hs/hvdisp/coadd/z1_s2l/z1_s2l_robust.txt'
+    base_file = 'mius_bi13.base'
+    mask_file = '/home/hs/hvdisp/pro/ancil/sl_mask2'
 
+    ;hs_ppxf_spec_fit, spec_file, base_file, $
+    ;    min_wave=4020.0, max_wave=7400.0, n_moments=2, $
+    ;    /save_result, /debug, mask_file=mask_file, suffix='noe_test'
 
+    ;hs_ppxf_spec_fit, spec_file, base_file, $
+    ;    min_wave=4020.0, max_wave=7400.0, n_moments=2, $
+    ;    /save_result, /debug, /include_emission, suffix='emi_test'
+
+    hs_ppxf_spec_fit, spec_file, base_file, $
+        min_wave=4020.0, max_wave=7400.0, n_moments=2, $
+        /save_result, /debug, /include_emission, suffix='reg_test', $
+        /regul
+
+;    fwhm_data=fwhm_data, fwhm_libr=fwhm_libr, $
+;    min_wave=min_wave,   max_wave=max_wave, $
+;    hvdisp_home=hvdisp_home, $ 
+;    vel_guess=vel_guess,     sig_guess=sig_guess, $
+;    sn_ratio=sn_ratio, mdegree=mdegree, n_moments=n_moments, $
+;    quiet=quiet, debug=debug, suffix=suffix, $
+;    save_temp=save_temp, result_file=result_file, $
+;    plot_result=plot_result, save_result=save_result, $
+;    include_emission=include_emission, mask_file=mask_file, $ 
+;    regul=regul, error_reg=error_reg, $
+;    is_flag=is_flag, is_error=is_error
+
+end
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
