@@ -575,6 +575,10 @@ if regul gt 0 then begin
     ncols = ncols + nreg
 endif
 c = dblarr(ncols,nrows)  ; This array is used for estimating predictions
+;print, 'XXXXXXXXXXXXX'
+;print, ntemp, nrows, ncols 
+;help, c
+;print, 'XXXXXXXXXXXXX'
 
 for j=0,degree do $ ; Fill first columns of the Design Matrix
     if nspec eq 2 then begin
@@ -674,13 +678,16 @@ if cap_any(moments gt 2) && bias ne 0 then begin
 endif
 
 ;; XXX SONG HUANG
-temp_arr = c
+;print,' XXXXXXXXXXXXX'
+;print, npix, nspec, ( npix * nspec ) 
+
+temp_arr = c[0:npix*nspec-1,*]
 
 return, err
 END
 
 ;----------------------------------------------------------------------------
-PRO ppxf, templates, galaxy, noise, velScale, start, sol, $
+PRO hs_ppxf, templates, galaxy, noise, velScale, start, sol, $
     BESTFIT=bestFit, BIAS=bias, CLEAN=clean, DEGREE=degree, ERROR=error, $
     GOODPIXELS=goodPixels, MDEGREE=mdegree, MOMENTS=moments1, OVERSAMPLE=oversample, $
     POLYWEIGHTS=polyweights, PLOT=plot, QUIET=quiet, SKY=sky, VSYST=vsyst, WEIGHTS=weights, $
