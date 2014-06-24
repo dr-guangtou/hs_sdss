@@ -67,15 +67,16 @@ pro hvdisp_coadd_batch, input_list, index_list=index_list
         /silent, count=n_input
     ;;
     for mm = 0, ( n_input - 1 ), 1 do begin 
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         print, '###############################################################'
         coadd_list = strcompress( input_files[ mm ], /remove_all )
         print, ' Measure spectral index for : ' + coadd_list 
         print, '###############################################################'
-        ;;
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         temp = strsplit( coadd_list, '/.', /extract ) 
         coadd_prefix = temp[ n_elements( temp ) - 2 ] 
         strreplace, coadd_prefix, 'hvdisp_', '' 
-        ;; 
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         hvdisp_coadd_index, coadd_list, index_list=index_list, $
             suffix=coadd_prefix, /save_csv 
     endfor 
