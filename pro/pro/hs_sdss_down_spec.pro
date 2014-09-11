@@ -80,10 +80,6 @@ pro hs_sdss_down_spec, list_file, html=html, pmf=pmf, $
             ;;
             plate_str = strcompress( string( long( plate ) ), /remove_all ) 
             list_loca[ ii ] = locspec + plate_str + '/'
-            if ( dir_exist( list_loca[ ii ] ) NE 1 ) then begin 
-                spawn, 'mkdir ' + list_loca[ ii ] 
-                print, ' Create new directory: ' + list_loca[ ii ] 
-            endif 
         endfor 
     endif else begin 
         list_html = list_spec
@@ -99,10 +95,6 @@ pro hs_sdss_down_spec, list_file, html=html, pmf=pmf, $
             ;; 
             list_spec[ ii ] = file 
             list_loca[ ii ] = locspec + plate_str + '/' 
-            if ( dir_exist( list_loca[ ii ] ) NE 1 ) then begin 
-                spawn, 'mkdir ' + list_loca[ ii ] 
-                print, ' Create new directory: ' + list_loca[ ii ] 
-            endif 
         endfor 
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -110,15 +102,10 @@ pro hs_sdss_down_spec, list_file, html=html, pmf=pmf, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     openw, lun, prefix + '_down.sh', /get_lun, width=500
     for jj = 0L, ( n_spec - 1 ), 1 do begin 
-        spec_file = list_loca[jj] + list_spec[ jj ] 
-        if NOT file_test( spec_file ) then begin 
-            if keyword_set( wget ) then begin 
-                printf, lun, 'wget -P ' + list_loca[ jj ] + '  ' + list_html[ jj ]
-            endif else begin 
-                printf, lun, 'axel -o ' + list_loca[ jj ] + '  ' + list_html[ jj ]
-            endelse
+        if keyword_set( wget ) then begin 
+            printf, lun, 'wget ' + list_html[ jj ]
         endif else begin 
-            print, ' File : ' + spec_file + ' has already been downloaded !!'
+            printf, lun, 'axel ' + list_html[ jj ]
         endelse
     endfor 
     close, lun 
@@ -127,13 +114,13 @@ pro hs_sdss_down_spec, list_file, html=html, pmf=pmf, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;openw, lun, prefix + '_move.sh', /get_lun, width=500
-    ;for kk = 0L, ( n_spec - 1 ), 1 do begin 
-    ;    printf, lun, 'mv ' + list_spec[ kk ] + ' ' + list_loca[ kk ]
-    ;endfor 
-    ;close, lun 
-    ;free_lun, lun 
-    ;spawn, 'chmod +x ' + prefix + '_move.sh'
+    openw, lun, prefix + '_move.sh', /get_lun, width=500
+    for kk = 0L, ( n_spec - 1 ), 1 do begin 
+        printf, lun, 'mv ' + list_spec[ kk ] + ' ' + list_loca[ kk ]
+    endfor 
+    close, lun 
+    free_lun, lun 
+    spawn, 'chmod +x ' + prefix + '_move.sh'
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -141,7 +128,9 @@ pro hs_sdss_down_spec, list_file, html=html, pmf=pmf, $
         if ( no_para EQ 0 ) then begin 
             spawn, parallel + ' -j+0 < ' + prefix + '_down.sh' 
         endif else begin 
-            spawn, 'sh ' + prefix + '_down.sh'
+            for mm = 0L, ( n_spec - 1 ), 1 do begin 
+                spawn, download + ' ' + list_html[ mm ] 
+            endfor 
         endelse
     endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
