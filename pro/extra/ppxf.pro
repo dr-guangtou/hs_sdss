@@ -47,6 +47,8 @@
 ;      where the sky dominates the observed spectrum and an accurate
 ;      sky subtraction is critical.
 ;   8) One can derive an estimate of the reddening in the spectrum.
+;   9) The covariance matrix can be input instead of the error spectrum, 
+;      to account for correlated errors in the spectral pixels.
 ;
 ; CALLING SEQUENCE:
 ;   PPXF, templates, galaxy, noise, velScale, start, sol, $
@@ -97,8 +99,14 @@
 ;       2) Make sure the spectra are rescaled to be not too many order of
 ;       magnitude different from unity, to avoid over or underflow problems
 ;       in the calculation. E.g. units of erg/(s cm^2 A) may cause problems!
-;   NOISE: vector containing the 1*sigma error (per pixel) in the galaxy spectrum.
-;       If GALAXY is a Nx2 array, NOISE has to be an array with the same dimensions.
+;   NOISE: vector containing the 1*sigma error (per pixel) in the galaxy spectrum,
+;       or covariance matrix describing the correlated errors in the galaxy spectrum.
+;       Of course this vector/matrix must have the same units as the galaxy spectrum.
+;     - If GALAXY is a Nx2 array, NOISE has to be an array with the same dimensions.
+;     - When NOISE has dimensions NxN it is assumed to contain the covariance matrix
+;       with elements sigma(i,j). When the errors in the spectrum are uncorrelated
+;       it is mathematically equivalent to input in PPXF an error vector NOISE=errvec
+;       or a NxN diagonal matrix NOISE=DIAG_MATRIX(errvec^2) (note squared!).
 ;     - IMPORTANT: the penalty term of the pPXF method is based on the *relative*
 ;       change of the fit residuals. For this reason the penalty will work as
 ;       expected even if no reliable estimate of the NOISE is available
@@ -277,7 +285,9 @@
 ;   SOL: seven elements vector containing in output the values of
 ;       [Vel,Sigma,h3,h4,h5,h6,Chi^2/DOF] of the best fitting solution, where DOF
 ;       is the number of Degrees of Freedom (number of fitted spectral pixels).
-;       Vel is the velocity, Sigma is the velocity dispersion, h3-h6 are the
+;     - When fitting multiple kinematic COMPONENT, sol[6,ncomp] contains the solution
+;       for all different components, one after the other, sorted by COMPONENT.       
+;     - Vel is the velocity, Sigma is the velocity dispersion, h3-h6 are the
 ;       Gauss-Hermite coefficients. The model parameter are fitted simultaneously.
 ;     - I hardcoded the following safety limits on the fitting parameters:
 ;         a) Vel is constrained to be +/-2000 km/s from the first input guess
@@ -291,7 +301,7 @@
 ;     - IMPORTANT: if Chi^2/DOF is not ~1 it means that the errors are not
 ;       properly estimated, or that the template is bad and it is *not* safe
 ;       to set the /CLEAN keyword.
-;     - When MDEGREE > 1 then SOL contains in output the 7+MDEGREE elements
+;     - When MDEGREE > 0 then SOL contains in output the 7+MDEGREE elements
 ;       [Vel,Sigma,h3,h4,h5,h6,Chi^2/DOF,cx1,cx2,...,cxn], where cx1,cx2,...,cxn
 ;       are the coefficients of the multiplicative Legendre polynomials
 ;       of order 1,2,...,n. The polynomial can be explicitly evaluated as:
@@ -349,79 +359,90 @@
 ;           The IDL Astronomy User's Library http://idlastro.gfsc.nasa.gov/
 ;
 ; MODIFICATION HISTORY:
-;   V1.0 -- Created by Michele Cappellari, Leiden, 10 October 2001.
-;   V3.47 -- First released version. MC, Leiden, 8 December 2003
-;   V3.5 -- Included /OVERSAMPLE option. MC, Leiden, 11 December 2003
-;   V3.6 -- Added MDEGREE option for multiplicative polynomials.
+;   V1.0.0 -- Created by Michele Cappellari, Leiden, 10 October 2001.
+;   V3.4.7 -- First released version. MC, Leiden, 8 December 2003
+;   V3.5.0 -- Included /OVERSAMPLE option. MC, Leiden, 11 December 2003
+;   V3.6.0 -- Added MDEGREE option for multiplicative polynomials.
 ;           Linear implementation: fast, works well in most cases, but
 ;           can fail in certain cases. MC, Leiden, 19 March 2004
-;   V3.7 -- Revised implementation of MDEGREE option. Nonlinear implementation:
+;   V3.7.0 -- Revised implementation of MDEGREE option. Nonlinear implementation:
 ;           straightforward, robust, but slower. MC, Leiden, 23 March 2004
-;   V3.71 -- Updated documentation. MC, Leiden, 31 March 2004
-;   V3.72 -- Corrected program stop after fit when MOMENTS=2.
+;   V3.7.1 -- Updated documentation. MC, Leiden, 31 March 2004
+;   V3.7.2 -- Corrected program stop after fit when MOMENTS=2.
 ;           Bug was introduced in V3.7. MC, Leiden, 28 April 2004
-;   V3.73 -- Corrected bug: keyword ERROR was returned in pixels
+;   V3.7.3 -- Corrected bug: keyword ERROR was returned in pixels
 ;           instead of km/s. Decreased lower limit on fitted dispersion.
 ;           Thanks to Igor V. Chilingarian. MC, Leiden, 7 August 2004
-;   V4.0 -- Introduced optional two-sided fitting assuming a reflection-symmetric
+;   V4.0.0 -- Introduced optional two-sided fitting assuming a reflection-symmetric
 ;           LOSVD for two input spectra. MC, Vicenza, 16 August 2004
-;   V4.1 -- Corrected implementation of two-sided fitting of the LOSVD.
+;   V4.1.0 -- Corrected implementation of two-sided fitting of the LOSVD.
 ;           Thanks to Stefan van Dongen for reporting problems.
 ;           MC, Leiden, 3 September 2004
-;   V4.11 -- Increased maximum number of iterations ITMAX in BVLS.
+;   V4.1.1 -- Increased maximum number of iterations ITMAX in BVLS.
 ;           Thanks to Jesus Falcon-Barroso for reporting problems.
 ;           Introduced error message when velocity shift is too big.
 ;           Corrected output when MOMENTS=0. MC, Leiden, 21 September 2004
-;   V4.12 -- Handle special case where a single template without additive
+;   V4.1.2 -- Handle special case where a single template without additive
 ;           polynomials is fitted to the galaxy. MC, Leiden, 11 November 2004
-;   V4.13 -- Updated documentation. MC, Vicenza, 30 December 2004
-;   V4.14 -- Make sure input NOISE is a positive vector. MC, Leiden, 12 January 2005
-;   V4.15 -- Verify that GOODPIXELS is monotonic and does not contain duplicated values.
+;   V4.1.3 -- Updated documentation. MC, Vicenza, 30 December 2004
+;   V4.1.4 -- Make sure input NOISE is a positive vector. MC, Leiden, 12 January 2005
+;   V4.1.5 -- Verify that GOODPIXELS is monotonic and does not contain duplicated values.
 ;           After feedback from Richard McDermid. MC, Leiden, 10 February 2005
-;   V4.16 -- Print number of nonzero templates. Do not print outliers in /QUIET mode.
+;   V4.1.6 -- Print number of nonzero templates. Do not print outliers in /QUIET mode.
 ;           MC, Leiden, 20 January 2006
-;   V4.17 -- Updated documentation with important note on penalty determination.
+;   V4.1.7 -- Updated documentation with important note on penalty determination.
 ;           MC, Oxford, 6 October 2007
-;   V4.2 -- Introduced optional fitting of SKY spectrum. Many thanks to
+;   V4.2.0 -- Introduced optional fitting of SKY spectrum. Many thanks to
 ;           Anne-Marie Weijmans for testing. MC, Oxford, 15 March 2008
-;   V4.21 -- Use LA_LEAST_SQUARES (IDL 5.6) instead of SVDC when fitting
+;   V4.2.1 -- Use LA_LEAST_SQUARES (IDL 5.6) instead of SVDC when fitting
 ;           a single template. Please let me know if you need to use PPXF
 ;           with an older IDL version. MC, Oxford, 17 May 2008
-;   V4.22 -- Added keyword POLYWEIGHTS. MC, Windhoek, 3 July 2008
-;   V4.23 -- Corrected error message for too big velocity shift.
+;   V4.2.2 -- Added keyword POLYWEIGHTS. MC, Windhoek, 3 July 2008
+;   V4.2.3 -- Corrected error message for too big velocity shift.
 ;           MC, Oxford, 27 November 2008
-;   V4.3 -- Introduced REGUL keyword to perform linear regularization of WEIGHTS
+;   V4.3.0 -- Introduced REGUL keyword to perform linear regularization of WEIGHTS
 ;           in one or two dimensions. MC, Oxford, 4 Mach 2009
-;   V4.4 -- Introduced Calzetti et al. (2000) PPXF_REDDENING_CURVE function to
+;   V4.4.0 -- Introduced Calzetti et al. (2000) PPXF_REDDENING_CURVE function to
 ;           estimate the reddening from the fit. MC, Oxford, 18 September 2009
-;   V4.5 -- Dramatic speed up in the convolution of long spectra.
+;   V4.5.0 -- Dramatic speed up in the convolution of long spectra.
 ;           MC, Oxford, 13 April 2010
-;   V4.6 -- Important fix to /CLEAN procedure: bad pixels are now properly
+;   V4.6.0 -- Important fix to /CLEAN procedure: bad pixels are now properly
 ;           updated during the 3sigma iterations. MC, Oxford, 12 April 2011
-;   V4.61 -- Use Coyote Graphics (http://www.idlcoyote.com/) by David W. Fanning.
+;   V4.6.1 -- Use Coyote Graphics (http://www.idlcoyote.com/) by David W. Fanning.
 ;           The required routines are now included in NASA IDL Astronomy Library.
 ;           MC, Oxford, 29 July 2011
-;   V4.62 -- Included option for 3D regularization and updated documentation of
+;   V4.6.2 -- Included option for 3D regularization and updated documentation of
 ;           REGUL keyword. MC, Oxford, 17 October 2011
-;   V4.63 -- Do not change TEMPLATES array in output when REGUL is nonzero.
+;   V4.6.3 -- Do not change TEMPLATES array in output when REGUL is nonzero.
 ;           From feedback of Richard McDermid. MC, Oxford 25 October 2011
-;   V4.64 -- Increased oversampling factor to 30x, when the /OVERSAMPLE keyword
+;   V4.6.4 -- Increased oversampling factor to 30x, when the /OVERSAMPLE keyword
 ;           is used. Updated corresponding documentation. Thanks to Nora 
 ;           Lu"tzgendorf for test cases illustrating errors in the recovered 
 ;           velocity when the sigma is severely undersampled.
 ;           MC, Oxford, 9 December 2011
-;   V4.65 -- Expanded documentation of REGUL keyword. MC, Oxford, 15 November 2012
-;   V4.66 -- Uses CAP_RANGE to avoid potential naming conflicts. 
+;   V4.6.5 -- Expanded documentation of REGUL keyword. MC, Oxford, 15 November 2012
+;   V4.6.6 -- Uses CAP_RANGE to avoid potential naming conflicts. 
 ;           MC, Paranal, 8 November 2013
-;   V4.67 -- Fixed G-H moments penalization when using multiplicative polynomials.
+;   V4.6.7 -- Fixed G-H moments penalization when using multiplicative polynomials.
 ;           Improved /CLEAN loop. MC, Oxford, 6 December 2013
-;   V4.7 -- A PPXF version adapted for multiple kinematic components existed for years.
+;   V4.7.0 -- A PPXF version adapted for multiple kinematic components existed for years.
 ;           It was updated in JAN/2012 for the paper by Johnston et al. (2013, MNRAS).
 ;           This version merges those changes with the public PPXF version, making 
 ;           sure that all previous PPXF options are still supported. 
 ;           MC, Oxford, 9 January 2014
-;   V4.71 -- Fixed potential program stop introduced in V4.7. 
+;   V4.7.1 -- Fixed potential program stop introduced in V4.7. 
 ;           MC, Portsmouth, 22 January 2014
+;   V4.7.2 -- Replaced REBIN with INTERPOLATE with /OVERSAMPLE keyword. This is to 
+;           account for the fact that the Line Spread Function of the observed galaxy
+;           spectrum already includes pixel convolution. Thanks to Mike Blanton
+;           for the suggestion. MC, Oxford, 6 May 2014
+;   V4.7.3 -- Allow for an input covariance matrix instead of an error spectrum.
+;           MC, Oxford, 7 May 2014
+;   V4.7.4 -- Fixed program stop with REDDENING keyword, introduced in V4.7.
+;           Thanks to Se'bastien Comero'n (Finland) for reprorting the bug.
+;           MC, Oxford, 23 May 2014
+;   V4.7.5 -- Relaxed limit on maximum initial velocity shift. 
+;           MC, Oxford, 3 September 2014
 ;-
 ;----------------------------------------------------------------------------
 FUNCTION ppxf_reddening_curve, lambda, ebv
@@ -494,8 +515,7 @@ FUNCTION ppxf_fitfunc_optimal_template, pars, $
     FACTOR=factor, GALAXY=galaxy, GOODPIXELS=goodPixels, MDEGREE=mdegree, $
     NOISE=noise, QUIET=quiet, SKY=sky, STAR=star, VSYST=vsyst, WEIGHTS=weights, $
     REGUL=regul, REG_DIM=reg_dim, LAMBDA=lambda, $
-    NCOMP=ncomp, COMPONENT=component, MOMENTS=moments, $
-    TEMP_ARR=temp_arr
+    NCOMP=ncomp, COMPONENT=component, MOMENTS=moments
 compile_opt idl2, hidden
 
 s = size(galaxy)
@@ -509,9 +529,12 @@ if n_elements(lambda) gt 1 then npars = npars - 1 ; Fitting reddening
 dx = 0
 p = 0
 for j=0,ncomp-1 do begin
-    dx >= ceil(abs(vsyst)+abs(pars[0+p])+5d*pars[1+p]) ; Sample the Gaussian and GH at least to vsyst+vel+5*sigma
+    if nspec eq 2 then $ 
+        dx >= ceil(abs(vsyst) + abs(pars[0+p]) + 5d*pars[1+p]) $
+    else $ ; Sample the Gaussian and GH at least to |vsyst+vel|+5*sigma
+        dx >= ceil(abs(vsyst + pars[0+p]) + 5d*pars[1+p])        
     p += moments[j]
-endfor    
+endfor
 
 n = 2*dx*factor + 1
 x = cap_range(dx,-dx,n)   ; Evaluate the Gaussian using steps of 1/factor pixel
@@ -589,8 +612,11 @@ for j=0,ntemp-1 do begin
     if factor eq 1 then $ ; No oversampling of the template spectrum
         for k=0,nspec-1 do tmp[*,k] = ppxf_convol_fft(star[*,j],losvd[*,component[j],k]) $
     else begin             ; Oversample the template spectrum before convolution
-        st = interpolate(star[*,j],pix,CUBIC=-0.5)   ; Sinc-like interpolation
-        for k=0,nspec-1 do tmp[*,k] = rebin(ppxf_convol_fft(st,losvd[*,component[j],k]),s[1])
+        st = interpolate(star[*,j], pix, CUBIC=-0.5)   ; Sinc-like interpolation
+        for k=0,nspec-1 do begin
+            gal = ppxf_convol_fft(st, losvd[*,component[j],k])
+            tmp[*,k] = interpolate(gal, indgen(s[1]), CUBIC=-0.5)
+        endfor
     endelse
     c[0,(degree+1)*nspec+j] = (mpoly*tmp[0:npix-1,*])[*] ; reform into a vector
 endfor
@@ -604,7 +630,7 @@ if regul gt 0 then begin
     diff = [-1d,2d,-1d]*regul
     dim = size(reg_dim,/DIM) > 1
     case dim of
-        1: for j=1,reg_dim-2 do c[p++,i[j+[-1,0,1]]] = diff
+        1: for j=1,reg_dim[0]-2 do c[p++,i[j+[-1,0,1]]] = diff
         2: for k=0,reg_dim[1]-1 do $
                for j=0,reg_dim[0]-1 do begin
                    if j ne 0 && j ne reg_dim[0]-1 then c[p++,i[j+[-1,0,1],k]] = diff
@@ -630,8 +656,14 @@ for j=0,nsky-1 do begin
 endfor
 
 a = c                     ; This array is used for the actual solution of the system
-
-for j=0,nrows-1 do a[0,j] = c[0:npix*nspec-1,j]/noise ; Weight all columns with errors
+s3 = size(noise)
+if s3[1] eq s3[2] then begin ; input NOISE is a npix*npix covariance matrix
+    a[0,0] = noise # c[0:npix*nspec-1,*]
+    b = noise # galaxy                  
+endif else begin             ; input NOISE is a 1sigma error vector
+    for j=0,nrows-1 do a[0,j] = c[0:npix*nspec-1,j]/noise ; Weight all columns with errors
+    b = galaxy/noise
+endelse
 
 ; Select the spectral region to fit and solve the overconditioned system
 ; using SVD/BVLS. Use unweighted array for estimating bestfit predictions.
@@ -641,15 +673,18 @@ npoly = (degree+1)*nspec ; Number of additive polynomials in the fit
 
 repeat begin
     if regul gt 0 then begin
-        aa = a[[goodPixels,cap_range(npix*nspec,ncols-1)],*]
-        bb = [galaxy[goodPixels]/noise[goodPixels],replicate(0d,nreg)]
+        aa = a[[goodPixels, cap_range(npix*nspec,ncols-1)],*]
+        bb = [b[goodPixels], replicate(0d,nreg)]
     endif else begin
         aa = a[goodPixels,*]
-        bb = galaxy[goodPixels]/noise[goodPixels]
+        bb = b[goodPixels]
     endelse
     weights = ppxf_BVLS_Solve(aa,bb,npoly)
     bestfit = c[0:npix*nspec-1,*] # weights
-    err = (galaxy[goodPixels]-bestfit[goodPixels])/noise[goodPixels]
+    if s3[1] eq s3[2] then $ ; input NOISE is a npix*npix covariance matrix
+        err = (noise # (galaxy - bestfit))[goodPixels] $
+    else $                    ; input NOISE is a 1sigma error vector
+        err = ((galaxy - bestfit)/noise)[goodPixels]
     if keyword_set(clean) then begin
         tmp = where(abs(err) gt 3, m, COMPLEM=w) ; select errors larger than 3*sigma
         if (m ne 0) then begin
@@ -673,21 +708,16 @@ if cap_any(moments gt 2) && bias ne 0 then begin
     err = err + bias*robust_sigma(err, /ZERO)*sqrt(tmp)
 endif
 
-;; XXX SONG HUANG
-temp_arr = c
-
 return, err
 END
-
 ;----------------------------------------------------------------------------
-PRO ppxf, templates, galaxy, noise, velScale, start, sol, $
+PRO ppxf, templates, galaxy, noise1, velScale, start, sol, $
     BESTFIT=bestFit, BIAS=bias, CLEAN=clean, DEGREE=degree, ERROR=error, $
     GOODPIXELS=goodPixels, MDEGREE=mdegree, MOMENTS=moments1, OVERSAMPLE=oversample, $
     POLYWEIGHTS=polyweights, PLOT=plot, QUIET=quiet, SKY=sky, VSYST=vsyst, WEIGHTS=weights, $
     REGUL=regul, LAMBDA=lambda, REDDENING=reddening, $
     COMPONENT=component1, REG_DIM=reg_dim1, _EXTRA=ex, $
-    MPOLYWEIGHTS=mpolyweights, CHI2DOF=chi2, $ 
-    TEMP_ARR=temp_arr
+    MPOLYWEIGHTS=mpolyweights, CHI2DOF=chi2
 compile_opt idl2
 on_error, 2
 
@@ -732,10 +762,20 @@ if n_elements(regul) eq 0 then begin
     reg_dim = 0
 endif
 s2 = size(galaxy)
-s3 = size(noise)
+s3 = size(noise1)
 s4 = size(sky)
 if (s1[0] gt 2 || s2[0] gt 2 || s3[0] gt 2) then message, 'Wrong input dimensions'
-if ~array_equal(s2,s3) then message, 'GALAXY and NOISE must have the same size/type'
+if s3[1] eq s3[2] then begin ; NOISE is a 2-dim covariance matrix
+    if s3[1] ne s2[1] then message, 'Covariance Matrix must have size xpix*npix'
+    noise = noise1   ; Do not modify input covariance matrix
+    la_choldc, noise, /UPPER ; Cholesky factor of symmetric, positive-definite covariance matrix
+    for j=0,s3[1]-2 do noise[j,j+1:*] = 0 ; Upper triangular elements should be zero
+    noise = la_invert(noise) ; Invert Cholesky factor
+endif else begin   ; NOISE is an error spectrum
+    if ~array_equal(s2,s3) then message, 'GALAXY and NOISE must have the same size/type'
+    if ~array_equal(noise1 gt 0, 1) then message, 'NOISE must be a positive error vector or covariance matrix'
+    noise = noise1
+endelse
 if (s1[1] lt s2[1]) then message, 'STAR length cannot be smaller than GALAXY'
 if n_elements(reddening) gt 0 then begin
     if ~array_equal(size(lambda),s2) then $
@@ -743,7 +783,6 @@ if n_elements(reddening) gt 0 then begin
     if n_elements(mdegree) gt 0 then $
         message, 'MDEGREE cannot be used with REDDENING keyword'
 endif else lambda = 0
-if ~array_equal(noise gt 0, 1) then message, 'NOISE must be a positive vector'
 if s4[0] gt 0 && s4[1] ne s2[1] then message, 'SKY must have the same size as GALAXY'
 degree = ~n_elements(degree) ? 4 : degree > (-1)
 mdegree = ~n_elements(mdegree) ? 0 : mdegree > 0
@@ -761,8 +800,8 @@ endelse
 if n_elements(bias) le 0 then bias = 0.7d*sqrt(500d/n_elements(goodPixels)) ; pPXF paper pg.144 left
 if n_elements(moments) eq 0 then moments = 2 else begin
     for j=0,ncomp-1 do $
-        if total(absmom[j] eq [0,2,4,6]) eq 0 then $
-            message, 'MOMENTS should be 0, 2, 4 or 6'
+        if total(absmom[j] eq [2,4,6]) eq 0 then $
+            message, 'MOMENTS should be 2, 4 or 6 (or negative to keep kinematics fixed)'
 endelse            
 if ncomp gt 1 && ncomp ne (size(start,/dim))[1] then $
     message, 'Each component must have a starting guess in START'
@@ -773,7 +812,7 @@ if n_elements(vsyst) eq 0 then begin
 endif
 
 ngh = total(absmom)
-npars = ngh + mdegree*s2[0]
+npars = ngh + mdegree*s2[0] + n_elements(reddening)
 
 ; Explicitly specify the step for the numerical derivatives
 ; in MPFIT routine and force safety limits on the fitting parameters.
@@ -790,7 +829,7 @@ for j=0,ncomp-1 do begin
     parinfo[1+p].limits = [0.1d,1d3/velScale] ; hard-coded velScale/10<sigma<1000 km/s
     parinfo[[0,1]+p].value = start1
     parinfo[[0,1]+p].step = 1d-2
-    if s1[1] le 2*(abs(vsyst/velScale)+abs(start1[0])+5d*start1[1]) then $
+    if s1[1] le 2*(abs(vsyst/velScale + start1[0]) + 5d*start1[1]) then $
         message, 'Velocity shift too big: Adjust wavelength ranges of spectrum and templates'
     if moments[j] lt 0 then begin
         parinfo[p:p+absmom[j]-1].fixed = 1
@@ -849,8 +888,7 @@ err = ppxf_fitfunc_optimal_template(res, BESTFIT=bestFit, BIAS=0, DEGREE=degree,
     FACTOR=factor, GALAXY=galaxy, GOODPIXELS=goodPixels, MDEGREE=mdegree, $
     NOISE=noise, SKY=sky, STAR=star, VSYST=vsyst/velScale, WEIGHTS=weights, $
     REGUL=regul, REG_DIM=reg_dim, LAMBDA=lambda, $
-    NCOMP=ncomp, COMPONENT=component, MOMENTS=absmom, $
-    TEMP_ARR=temp_arr )  ;; by SONG HUANG
+    NCOMP=ncomp, COMPONENT=component, MOMENTS=absmom)
 
 chi2 = robust_sigma(err, /ZERO)^2       ; Robust computation of Chi^2/DOF.
 sol = dblarr(7+mdegree*s2[0],ncomp)
@@ -909,7 +947,7 @@ if keyword_set(plot) then begin
     endfor
     w = (m gt 0) ? [0,w,w+1,n-1] : [0,n-1]  ; Add first and last point
     for j=0,n_elements(w)-1 do $
-        cgplot, goodPixels[w[[j,j]]], [mn,bestfit[goodPixels[w[j]]]], COLOR='forest green', /OVERPLOT
+        cgplot, goodPixels[w[[j,j]]], [mn,bestfit[goodPixels[w[j]]]], COLOR='lime green', /OVERPLOT
     wait, 0.01 ; Ensure screen refresh under windows
 endif
 

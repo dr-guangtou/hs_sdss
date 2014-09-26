@@ -72,21 +72,24 @@ pro hvdisp_batch_sig_index, index_list=index_list, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;for ii = 0, ( num_index - 1 ), 1 do begin 
+    for ii = 0, ( num_index - 1 ), 1 do begin 
     ;; For test
-    for ii = 0, 30, 1 do begin 
+    ;for ii = 0, 30, 1 do begin 
         
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         index_plot = strcompress( index_names[ ii ], /remove_all ) 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        print, '###############################################################'
+        print, ' Plot the index : ' + index_plot + ' !'
+        print, '###############################################################'
 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; Group 1
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        result1 = [ file5, file1, file2 ] 
-        reduse1 = [ 1, 2, 3 ]
+        result1 = [ file5, file7, file1 ] 
+        reduse1 = [ 0, 3 ]
         suffix1 = 'l_comp1'
-        sample1 = [ 'PCA-Emi', 'PCA', 'MED' ]
+        sample1 = [ 'PCA-L', 'PCA-K', 'PCA' ]
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         hvdisp_plot_sig_index, result1, index_plot, suffix=suffix1, $ 
             red_include=reduse1, /outline, /connect, /label, /legend, $

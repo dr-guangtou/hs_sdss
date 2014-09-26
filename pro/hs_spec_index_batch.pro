@@ -50,20 +50,23 @@ function hs_spec_index_batch, wave, flux, index_list=index_list, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; Default index list
-    index_default = 'hs_index_all.lis'
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Index list file 
     if keyword_set( index_list ) then begin
         index_list = strcompress( index_list, /remove_all ) 
-        if NOT file_test( loc_indexlis + index_list ) then begin 
-            print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
-            print, ' Can not find the index list : ' + index_list + ' !!!!'
-            print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
-            message, ' '
-        endif 
+        if file_test( index_list ) then begin 
+            index_list = index_list 
+        endif else begin 
+            if file_test( loc_indexlis + index_list ) then begin 
+                index_list = loc_indexlis + index_list 
+            endif else begin 
+                print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+                print, ' Can not find the index list : ' + index_list + ' !!!!'
+                print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+                message, ' '
+            endelse
+        endelse
     endif else begin 
-        index_list = index_default
+        index_list = loc_indexlis + 'hs_index_all.lis' 
         if NOT file_test( loc_indexlis + index_default ) then begin 
             print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
             print, ' Can not find the index list : ' + index_default + ' !!!!'
@@ -79,7 +82,7 @@ function hs_spec_index_batch, wave, flux, index_list=index_list, $
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Get the structure for index 
-    index_struc = hs_read_index_list( loc_indexlis + index_list )
+    index_struc = hs_read_index_list( index_list )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if ( ( tag_indx( index_struc, 'name' ) EQ -1 ) OR $
         ( tag_indx( index_struc, 'type' ) EQ -1 ) OR $ 

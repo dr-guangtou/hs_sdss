@@ -1,5 +1,5 @@
 pro hs_miuscat_csp_plot, csp_file, $
-    topng=topng, togif=togif, normalize=normalize 
+    topng=topng, togif=togif, normalize=normalize, gif_delay=gif_delay 
 
     ;; Check the CSP file 
     csp_file = strcompress( csp_file, /remove_all ) 
@@ -59,15 +59,15 @@ pro hs_miuscat_csp_plot, csp_file, $
     tau = csp_struc.tau 
     ;; T_trunc 
     t_trunc = csp_struc.tr
-    if ( t_trunc LT 0.0 ) then begin 
+    if ( t_trunc LE 0.0 ) then begin 
         do_truncation = 0 
     endif else begin 
         do_truncation = 1 
     endelse
 
     ;; Make a refined lookback time array 
-    d_time = ( t_cosmos / 3000.0 ) 
-    refined_lbt = findgen( 3000 ) * d_time 
+    d_time = ( t_cosmos / 2.0D4 ) 
+    refined_lbt = findgen( 2.0D4 ) * d_time 
     refined_sfr = ( ( t_start - refined_lbt ) / t_start )^( n_power ) * $ 
         exp( -1.0D * ( t_start - refined_lbt ) / tau )
 
@@ -80,10 +80,14 @@ pro hs_miuscat_csp_plot, csp_file, $
     if ( index_nan[0] NE -1 ) then begin 
         refined_sfr[ index_nan ] = 0.0 
     endif
+    index_out = where( refined_lbt GT t_start ) 
+    if ( index_out[0] NE -1 ) then begin 
+        refined_sfr[ index_out ] = 0.0 
+    endif 
 
     ;; Apply the truncation of SFR 
     if ( do_truncation EQ 1 ) then begin 
-        index_trunc = where( refined_arr LT t_trunc ) 
+        index_trunc = where( refined_lbt LT t_trunc ) 
         if ( index_trunc[0] EQ -1 ) then begin 
             print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
             print, ' Something weird about the truncation age! Check!  '
@@ -325,12 +329,28 @@ pro hs_miuscat_csp_plot, csp_file, $
             ;; To PNG 
             if keyword_set( topng ) then begin 
                 spawn, 'which convert', imagick_convert 
-                spawn, imagick_convert + ' -density 200 -resize 800x640 ' $
-                    + csp_eps + ' -quality 95 -flatten ' + csp_png
+                if ( imagick_convert NE '' ) then begin 
+                    spawn, imagick_convert + ' -density 200 -resize 800x640 ' $
+                        + csp_eps + ' -quality 95 -flatten ' + csp_png
+                endif 
             endif 
 
         endif
 
     endfor
+
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    if keyword_set( gif_delay ) then begin 
+        delay = string( long( gif_delay ), format='(I4)' )
+    endif else begin 
+        delay = ' 15 ' 
+    endelse
+    if keyword_set( togif ) then begin 
+        spawn, imagick_convert + ' -delay ' + delay + ' -loop 0 ' + $
+            csp_string + '*.png ' + csp_string + '.gif'
+        spawn, 'rm ' + csp_string + '*.eps'
+        spawn, 'rm ' + csp_string + '*.png'
+    endif 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 end

@@ -3,8 +3,7 @@
 function hs_convolve_sfh, $
     ssp, $  ;; Structure of SSPs used for convolution
     sfh, $  ;; Structure for the input SFH information 
-    min_norm=min_norm, max_norm=max_norm, $
-    makeplot=make_plot
+    min_norm=min_norm, max_norm=max_norm
 
     ;; Check the input of SSP 
     if ( n_elements( ssp ) EQ 0L ) then begin 

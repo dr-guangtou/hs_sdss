@@ -160,7 +160,7 @@ pro hs_miuscat_csp_index, csp_file, index_list=index_list, $
      fits_file = hs_string_replace( csp_file, '.fits', '_index.fits' )
 
      ;; Open the csv file for reading 
-     openw, 10, csv_file, width=6000  
+     openw, lun, csv_file, width=6000, /get_lun
 
      if keyword_set( last ) then begin 
          n_0 = ( n_time - 1 ) 
@@ -200,6 +200,8 @@ pro hs_miuscat_csp_index, csp_file, index_list=index_list, $
          n_0 = 0 
          n_1 = ( n_time - 1 ) 
      endif
+     ;; Number of time-frame for output 
+     n_out = ( n_1 - n_0 + 1 ) 
 
      ;; Main iteration 
      for ii = n_0, n_1, 1 do begin 
@@ -250,26 +252,30 @@ pro hs_miuscat_csp_index, csp_file, index_list=index_list, $
         endelse
 
         ;; Get the index structure 
-        index_struc = hs_list_measure_index( flux_conv, wave_conv, snr=600.0, $
+        index_struc = hs_spec_index_batch( wave_conv, flux_conv, snr=600.0, $
             /silent, header_line=header_line, index_line=index_line, $
             prefix=prefix, index_list=index_list )
 
+        ;; ASCII output to a .csv file 
         if ( ii EQ n_0 ) then begin 
-            printf, 10, header_line + ' , ' + csp_head
-        endif 
-        printf, 10, index_line + ' , ' + csp_line
-
-        if keyword_set( save_fits ) then begin 
-            if ( ii EQ n_0 ) then begin 
-                mwrfits, index_struc, fits_file, /create 
-            endif else begin 
-                mwrfits, index_struc, fits_file 
-            endelse 
-        endif 
+            ;; print the header if it is the first line
+            printf, lun, header_line + ' , ' + csp_head
+            ;; define the output structure 
+            out_struc = replicate( index_struc, n_out ) 
+            out_struc[ii-n_0] = index_struc
+        endif else begin  
+            printf, lun, index_line + ' , ' + csp_line
+            out_struc[ii-n_0] = index_struc
+        endelse
 
      endfor
 
+     ;; Save a fits catalog as output
+     if keyword_set( save_fits ) then begin 
+         mwrfits, out_struc, fits_file, /create 
+     endif 
+
      ;; close file 
-     close, 10
+     close, lun
 
 end
