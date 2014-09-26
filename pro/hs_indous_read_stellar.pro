@@ -89,7 +89,7 @@ function hs_indous_read_stellar, file_indous, silent=silent
             min_wave:min_wave, max_wave:max_wave, $
             r_spec:4200.0, resolution:30.0, unit:'km/s', $
             teff:teff, logg:logg, feh:feh, afe:!VALUES.F_NaN, $
-            comment:gaps }
+            comment:gaps, wavescale:'air' }
 
     endelse 
 

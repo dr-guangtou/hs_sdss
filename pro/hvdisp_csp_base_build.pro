@@ -58,8 +58,8 @@ pro hvdisp_csp_base_build, index_list=index_list, n_time=n_time
                             np  = n_p_arr[k], $
                             tau = tau_arr[m], $
                             tr  = tru_arr[n], $
-                            t_cosmos = 15.0, $
-                            ts = 14.0, $
+                            t_cosmos = 14.0, $
+                            ts = 13.6, $
                             n_time=n_time, $
                             /savefits )
 

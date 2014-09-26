@@ -77,7 +77,7 @@ function hs_miles_read_stellar, file_miles, silent=silent
             d_wave:d_wave, n_pixel:n_pixel, sampling:sampling, $
             min_wave:min_wave, max_wave:max_wave, $
             r_spec:2000.0, resolution:6.4, unit:'km/s', $
-            teff:0.0, logg:0.0, feh:0.0, afe:0.0 }
+            teff:0.0, logg:0.0, feh:0.0, afe:0.0, wavescale:'air' }
 
         tag = 'Teff:' 
         struc_miles.teff = float( hs_retrieve_para( head, tag, " ,:'", 4 ) )

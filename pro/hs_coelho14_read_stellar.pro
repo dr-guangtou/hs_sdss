@@ -55,10 +55,10 @@ function hs_coelho14_read_stellar, file_coelho, silent=silent
             d_wave:d_wave, n_pixel:n_pixel, sampling:"linear", $
             min_wave:min_wave, max_wave:max_wave, $
             r_spec:20000.0, resolution:6.4, unit:'km/s', $
-            teff:0.0, logg:0.0, feh:0.0, afe:0.0 }
+            teff:0.0, logg:0.0, feh:0.0, afe:0.0, wavescale:'vac' }
 
         struc_coelho.teff = float( fxpar( head, 'TEFF' ) )
-        struc_coelho.logg = float( fxpar( head, 'LOGG' ) )
+        struc_coelho.logg = float( fxpar( head, 'LOG_G' ) )
         struc_coelho.feh  = float( fxpar( head, 'FEH'  ) )
         struc_coelho.afe  = float( fxpar( head, 'AFE'  ) )
 

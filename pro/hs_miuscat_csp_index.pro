@@ -208,6 +208,8 @@ pro hs_miuscat_csp_index, csp_file, index_list=index_list, $
 
          ;; Time 
          t_csp = time[ii]
+         csp_line = csp_line + ' , ' + string( t_csp )
+         csp_head = csp_head + ' , COS_AGE '
          ;; Use time as prefix 
          prefix = strcompress( string( t_csp, format='(F6.2)' ), /remove_all )
          if NOT keyword_set( silent ) then begin 
@@ -255,11 +257,14 @@ pro hs_miuscat_csp_index, csp_file, index_list=index_list, $
         index_struc = hs_spec_index_batch( wave_conv, flux_conv, snr=600.0, $
             /silent, header_line=header_line, index_line=index_line, $
             prefix=prefix, index_list=index_list )
+        
+        struct_add_field, index_struc, 'cos_age', t_csp 
 
         ;; ASCII output to a .csv file 
         if ( ii EQ n_0 ) then begin 
             ;; print the header if it is the first line
             printf, lun, header_line + ' , ' + csp_head
+            printf, lun, index_line + ' , ' + csp_line
             ;; define the output structure 
             out_struc = replicate( index_struc, n_out ) 
             out_struc[ii-n_0] = index_struc
