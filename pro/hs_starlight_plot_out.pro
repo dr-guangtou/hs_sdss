@@ -29,7 +29,7 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
     psxsize=psxsize, psysize=psysize, relative_res=relative_res, $
     include_mask_ori=include_mask_ori, exclude_mask_res=exclude_mask_res, $
     met_label=met_label, met_title=met_title, topng=topng, $
-    res_cushion=res_cushion
+    res_cushion=res_cushion, put_label=put_label
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Constant 
@@ -139,7 +139,7 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
             message, ' ' 
         endelse 
     endif else begin 
-        wrange1 = [ 4101.0, 4449.0 ]
+        wrange1 = [ 4620.0, 4840.0 ]
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if keyword_set( window2 ) then begin 
@@ -154,7 +154,7 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
             message, ' ' 
         endelse 
     endif else begin 
-        wrange2 = [ 5001.0, 5449.0 ]
+        wrange2 = [ 5401.0, 5660.0 ]
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if keyword_set( window3 ) then begin 
@@ -169,7 +169,7 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
             message, ' ' 
         endelse 
     endif else begin 
-        wrange3 = [ 6801.0, 7399.0 ]
+        wrange3 = [ 6052.0, 6350.0 ]
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     
@@ -184,7 +184,7 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Index to over-plot 
     if keyword_set( index_list ) then begin 
-        index_list = loc_index + strcompress( index_list, /remove_all ) 
+        index_list = strcompress( index_list, /remove_all ) 
     endif else begin 
         index_list = loc_index + 'hs_index_plot.lis' 
     endelse
@@ -673,23 +673,25 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Put some information on 
     ;; Label 1
-    x_pos = position_1[0] + 0.55 
-    y_pos = position_1[1] + 0.06
-    x_step = 0.04 
-    label = 'Observed'
-    cgPlots, [ x_pos, (x_pos+x_step) ], [ y_pos, y_pos ], linestyle=0, $
-        thick=12.0, color=cgColor( 'BLACK' ), /normal
-    cgText, ( x_pos + 1.2 * x_step ), ( y_pos * 0.97 ), label, alignment=0, $
-        charsize=3.5, charthick=10.0, color=cgColor( 'Black' ), /normal
-    ;; Label 2
-    x_pos = position_1[0] + 0.55 
-    y_pos = position_1[1] + 0.03
-    x_step = 0.04 
-    label = 'Synthetic'
-    cgPlots, [ x_pos, (x_pos+x_step) ], [ y_pos, y_pos ], linestyle=0, $
-        thick=13.0, color=cgColor( 'Red' ), /normal
-    cgText, ( x_pos + 1.2 * x_step ), ( y_pos * 0.97 ), label, alignment=0, $
-        charsize=3.5, charthick=10.0, color=cgColor( 'Black' ), /normal
+    if keyword_set( put_label ) then begin 
+        x_pos = position_1[0] + 0.55 
+        y_pos = position_1[1] + 0.06
+        x_step = 0.04 
+        label = 'Observed'
+        cgPlots, [ x_pos, (x_pos+x_step) ], [ y_pos, y_pos ], linestyle=0, $
+            thick=12.0, color=cgColor( 'BLACK' ), /normal
+        cgText, ( x_pos + 1.2 * x_step ), ( y_pos * 0.97 ), label, alignment=0, $
+            charsize=3.5, charthick=10.0, color=cgColor( 'Black' ), /normal
+        ;; Label 2
+        x_pos = position_1[0] + 0.55 
+        y_pos = position_1[1] + 0.03
+        x_step = 0.04 
+        label = 'Synthetic'
+        cgPlots, [ x_pos, (x_pos+x_step) ], [ y_pos, y_pos ], linestyle=0, $
+            thick=13.0, color=cgColor( 'Red' ), /normal
+        cgText, ( x_pos + 1.2 * x_step ), ( y_pos * 0.97 ), label, alignment=0, $
+            charsize=3.5, charthick=10.0, color=cgColor( 'Black' ), /normal
+    endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1293,7 +1295,7 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if keyword_set( topng ) then begin 
         spawn, 'which convert', imagick_convert 
-        strreplace, plot_file, '.eps', '.png'
+        plot_png = hs_string_replace( plot_file, '.eps', '.png' )
         if ( imagick_convert NE '' ) then begin 
             spawn, imagick_convert + ' -density 200 ' + plot_file + $
                 ' -quality 90 -flatten ' + plot_png 

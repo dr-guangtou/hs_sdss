@@ -1,6 +1,6 @@
 function hs_miuscat_csp_build, miuscat_file, imf=imf, metal=metal, $
     ts=ts, np=np, tau=tau, tr=tr, t_cosmos=t_cosmos, n_time=n_time, $
-    debug=debug, savefits=savefits, log_age=log_age
+    debug=debug, save_fits=save_fits, log_age=log_age
 
     t0 = systime(1) 
     ;; Check the miuscat_file 
@@ -382,12 +382,6 @@ function hs_miuscat_csp_build, miuscat_file, imf=imf, metal=metal, $
                 csp_output[mm].age_lw = csp_temp[0].age_lw 
                 csp_output[mm].flux   = csp_temp[0].flux
 
-                ;cgPlot, csp_temp[*,149], $
-                ;    xstyle=1, ystyle=1, linestyle=0, $
-                ;    thick=2.0, color=cgColor( 'Black' ), /noerase
-                ;cgPlot, csp_temp[0].flux[*,149],  $
-                ;print, min( csp_temp.flux[*,120] ), max( csp_temp.flux[*,120] )
-
                 ;; Save the CSP to a fits file 
                 ;; String for each component 
                 ts_str  = 's' + strcompress( string( ts[kk], $
@@ -418,7 +412,7 @@ function hs_miuscat_csp_build, miuscat_file, imf=imf, metal=metal, $
                 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                 ;; Save the result
                 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-                if keyword_set( savefits ) then begin 
+                if keyword_set( save_fits ) then begin 
                     mwrfits, csp_output[mm], csp_fits, /create, /silent
                 endif 
                 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

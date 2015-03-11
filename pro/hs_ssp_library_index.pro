@@ -6,7 +6,7 @@
 ;              Measure the spectral index for certain stellar library  
 ;
 ; USAGE:
-;     hs_stellar_library_index, stelib_file, index_list=index_list, 
+;     hs_stellar_library_index, ssplib_file, index_list=index_list, 
 ;           save_fits=save_fits, silent=silent, toair=toair
 ;
 ; OUTPUT: 
@@ -22,32 +22,32 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-pro hs_stellar_library_index, stelib_file, index_list=index_list, $
+pro hs_ssp_library_index, ssplib_file, index_list=index_list, $
     save_fits=save_fits, silent=silent, toair=toair, plot=plot
 
     ;; Stellar library file 
-    stelib_file = strcompress( stelib_file, /remove_all )
+    ssplib_file = strcompress( ssplib_file, /remove_all )
 
     ;; Adjust the file name in case the input is an adress 
-    temp = strsplit( stelib_file, '/ ', /extract ) 
-    base_stelib = temp[ n_elements( temp ) - 1 ]
+    temp = strsplit( ssplib_file, '/ ', /extract ) 
+    base_ssplib = temp[ n_elements( temp ) - 1 ]
 
     ;; Check the file 
-    if NOT file_test( stelib_file ) then begin 
+    if NOT file_test( ssplib_file ) then begin 
         print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
-        print, '  Can not find the spectrum : ' + stelib_file
+        print, '  Can not find the spectrum : ' + ssplib_file
         print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
         message, ' '
     endif else begin 
         if NOT keyword_set( silent ) then begin 
             print, '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
-            print, ' About to read in: ' + base_stelib
+            print, ' About to read in: ' + base_ssplib
         endif 
 
         ;; Read in the spectra 
-        stelib = mrdfits( stelib_file, 1, head, /silent )
+        ssplib = mrdfits( ssplib_file, 1, head, /silent )
         ;; Number of spectra 
-        n_stars = n_elements( stelib.teff ) 
+        n_ssps = n_elements( ssplib.age ) 
 
     endelse
 
@@ -86,28 +86,24 @@ pro hs_stellar_library_index, stelib_file, index_list=index_list, $
      temp1 = hs_string_replace( temp0, '_index', '' )
 
      ;; Define the output file structure 
-     prefix = hs_string_replace( stelib_file, '.fits', '' ) + '_' + temp1
-     csv_file  = prefix + '_index.csv' 
+     prefix = hs_string_replace( ssplib_file, '.fits', '' ) + '_' + temp1
      fits_file = prefix + '_index.fits'
-
-     ;; Open the csv file for reading 
-     openw, lun, csv_file, width=6000, /get_lun
 
      ;; Main iteration 
      ;for ii = 0, 2, 1 do begin 
-     for ii = 0, ( n_stars - 1 ), 1 do begin 
+     for ii = 0, ( n_ssps - 1 ), 1 do begin 
 
-         wave = stelib[ ii ].wave 
-         flux = stelib[ ii ].flux 
-         name = stelib[ ii ].name 
+         wave = ssplib[ ii ].wave 
+         flux = ssplib[ ii ].flux 
+         name = ssplib[ ii ].name 
 
          if NOT keyword_set( silent ) then begin 
              print, '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
-             print, ' About to deal with star : ' + name 
+             print, ' About to deal with SSP : ' + name 
              print, '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
          endif 
 
-         temp = hs_string_replace( name, '.fits', '' ) 
+         temp   = hs_string_replace( name, '.fits', '' ) 
          prefix = hs_string_replace( name, '.txt', '' ) 
 
          if keyword_set( toair ) then begin 
@@ -127,30 +123,20 @@ pro hs_stellar_library_index, stelib_file, index_list=index_list, $
          endelse
 
          ;; Add stellar information to the structure
-         struct_add_field, results, 'teff', stelib[ ii ].teff 
-         struct_add_field, results, 'logg', stelib[ ii ].logg 
-         struct_add_field, results, 'feh',  stelib[ ii ].feh
-         struct_add_field, results, 'afe',  stelib[ ii ].afe
-         struct_add_field, results, 'name', stelib[ ii ].name
-         struct_add_field, results, 'comment', stelib[ ii ].comment
-
-         stelib_head = ' NAME , TEFF , LOGG , FEH , AFE ' 
-         stelib_line = stelib[ ii ].name + ' , ' + $
-             string( stelib[ ii ].teff ) + ' , ' + $
-             string( stelib[ ii ].logg ) + ' , ' + $
-             string( stelib[ ii ].feh  ) + ' , ' + $
-             string( stelib[ ii ].afe  )
+         struct_add_field, results, 'imf',   ssplib[ ii ].imf 
+         struct_add_field, results, 'slope', ssplib[ ii ].slope 
+         struct_add_field, results, 'age',   ssplib[ ii ].age
+         struct_add_field, results, 'metal', ssplib[ ii ].metal
+         struct_add_field, results, 'afe',   ssplib[ ii ].afe
+         struct_add_field, results, 'feh',   ssplib[ ii ].feh
+         struct_add_field, results, 'type',  ssplib[ ii ].type
 
          ;; ASCII output to a .csv file 
          if ( ii EQ 0 ) then begin 
-             ;; print the header if it is the first line
-             printf, lun, header_line + ' , ' + stelib_head
-             printf, lun, index_line  + ' , ' + stelib_line
              ;; define the output structure 
-             out_struc = replicate( results, n_stars ) 
+             out_struc = replicate( results, n_ssps ) 
              out_struc[ ii ] = results
          endif else begin  
-             printf, lun, index_line  + ' , ' + stelib_line
              out_struc[ ii ] = results
          endelse
 
@@ -162,8 +148,6 @@ pro hs_stellar_library_index, stelib_file, index_list=index_list, $
      endif 
 
      ;; close file 
-     close, lun
-     free_lun, lun
      free_all
 
 end

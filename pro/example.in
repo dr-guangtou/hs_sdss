@@ -1,0 +1,16 @@
+2                                                [Number of fits to run]
+/Users/songhuang/astro1/data/hvdisp/csp/s13      [base_dir]
+/Users/songhuang/Downloads/                      [obs_dir]
+/Users/songhuang/Downloads/                      [mask_dir]
+/Users/songhuang/Downloads/                      [out_dir]
+1865168                                          [your phone number]
+4730.0                                           [llow_SN]   lower-lambda of S/N window
+4780.0                                           [lupp_SN]   upper-lambda of S/N window
+3700.0                                           [Olsyn_ini] lower-lambda for fit
+8400.0                                           [Olsyn_fin] upper-lambda for fit
+1.0                                              [Odlsyn]    delta-lambda for fit
+1.0                                              [fscale_chi2] fudge-factor for chi2
+FIT                                              [FIT/FXK] Fit or Fix kinematics
+0                                                [IsErrSpecAvailable]  1/0 = Yes/No
+0                                                [IsFlagSpecAvailable] 1/0 = Yes/No
+csp1.txt bb.config mius_un10.base masks1 CCM 0.0 350.0 csp1_un10.out

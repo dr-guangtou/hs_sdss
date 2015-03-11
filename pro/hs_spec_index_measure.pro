@@ -619,6 +619,8 @@ function hs_spec_index_measure, wave, flux, index, error=error, $
 
     ;; Return output 
     return, output
+    ;; 
+    free_all
 
 end
 

@@ -1,6 +1,6 @@
 ;#############################################################################
 ;
-; Copyright (C) 2001-2014, Michele Cappellari
+; Copyright (C) 2001-2015, Michele Cappellari
 ; E-mail: cappellari_at_astro.ox.ac.uk
 ;
 ; Updated versions of the software are available from my web page
@@ -369,7 +369,7 @@
 ;           straightforward, robust, but slower. MC, Leiden, 23 March 2004
 ;   V3.7.1 -- Updated documentation. MC, Leiden, 31 March 2004
 ;   V3.7.2 -- Corrected program stop after fit when MOMENTS=2.
-;           Bug was introduced in V3.7. MC, Leiden, 28 April 2004
+;           Bug was introduced in V3.7.0. MC, Leiden, 28 April 2004
 ;   V3.7.3 -- Corrected bug: keyword ERROR was returned in pixels
 ;           instead of km/s. Decreased lower limit on fitted dispersion.
 ;           Thanks to Igor V. Chilingarian. MC, Leiden, 7 August 2004
@@ -430,7 +430,7 @@
 ;           This version merges those changes with the public PPXF version, making 
 ;           sure that all previous PPXF options are still supported. 
 ;           MC, Oxford, 9 January 2014
-;   V4.7.1 -- Fixed potential program stop introduced in V4.7. 
+;   V4.7.1 -- Fixed potential program stop introduced in V4.7.0. 
 ;           MC, Portsmouth, 22 January 2014
 ;   V4.7.2 -- Replaced REBIN with INTERPOLATE with /OVERSAMPLE keyword. This is to 
 ;           account for the fact that the Line Spread Function of the observed galaxy
@@ -443,6 +443,9 @@
 ;           MC, Oxford, 23 May 2014
 ;   V4.7.5 -- Relaxed limit on maximum initial velocity shift. 
 ;           MC, Oxford, 3 September 2014
+;   V4.7.6 -- Properly normalize LOSVD with OVERSAMPLE. MC, Oxford, 16 September 2014
+;   V4.7.7 -- Removed change introduced in V4.7.2 after Nora Lutzgendorf report
+;	    of problems. MC, Sydney, 5 February 2015
 ;-
 ;----------------------------------------------------------------------------
 FUNCTION ppxf_reddening_curve, lambda, ebv
@@ -455,6 +458,7 @@ compile_opt idl2, hidden
 ; - EBV is the assumed E(B-V) colour excess to redden the spectrum.
 ; In output the vector FRAC gives the fraction by which the flux at each
 ; wavelength has to be multiplied, to model the dust reddening effect.
+; XXX SH: Should make more options available 
 
 k1 = lambda*0
 lam = 1e4/lambda ; Convert Angstrom to micrometres and take 1/lambda
@@ -546,7 +550,8 @@ for j=0,ncomp-1 do begin
         vel = vsyst + s*pars[0+p]
         w = (x - vel)/pars[1+p]
         w2 = w^2
-        losvd[*,j,k] = exp(-0.5d*w2)/(sqrt(2d*!dpi)*pars[1+p]) ; Normalized total(Gaussian)=1
+        gauss = exp(-0.5d*w2)
+        losvd[*,j,k] = gauss/total(gauss)
     
         ; Hermite polynomials normalized as in Appendix A of van der Marel & Franx (1993).
         ; Coefficients for h5, h6 are given e.g. in Appendix C of Cappellari et al. (2002)
@@ -613,10 +618,7 @@ for j=0,ntemp-1 do begin
         for k=0,nspec-1 do tmp[*,k] = ppxf_convol_fft(star[*,j],losvd[*,component[j],k]) $
     else begin             ; Oversample the template spectrum before convolution
         st = interpolate(star[*,j], pix, CUBIC=-0.5)   ; Sinc-like interpolation
-        for k=0,nspec-1 do begin
-            gal = ppxf_convol_fft(st, losvd[*,component[j],k])
-            tmp[*,k] = interpolate(gal, indgen(s[1]), CUBIC=-0.5)
-        endfor
+        for k=0,nspec-1 do tmp[*,k] = rebin(ppxf_convol_fft(st,losvd[*,component[j],k]),s[1])
     endelse
     c[0,(degree+1)*nspec+j] = (mpoly*tmp[0:npix-1,*])[*] ; reform into a vector
 endfor

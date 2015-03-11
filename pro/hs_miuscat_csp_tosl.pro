@@ -4,7 +4,6 @@ pro hs_miuscat_csp_tosl, csp_file, index=index, $
 
     ;; X-range for display 
     debug_range = [ 3700, 9200 ]
-    ;debug_range = [ 4700, 5200 ]
     sigma_default = 350.0
 
     ;; Check the CSP file 
@@ -50,6 +49,7 @@ pro hs_miuscat_csp_tosl, csp_file, index=index, $
 
     ;; The string for this CSP 
     csp_string = str_replace( csp_file, '.fits', '' ) 
+
     ;; Extract information from the CSP file title 
     temp = strsplit( csp_string, '_', /extract )
     if ( n_elements( temp ) NE 4 ) then begin 

@@ -61,43 +61,26 @@ pro hvdisp_csp_base_build, index_list=index_list, n_time=n_time
                             t_cosmos = 14.0, $
                             ts = 13.6, $
                             n_time=n_time, $
-                            /savefits )
+                            /save_fits )
 
                         csp_fits = csp_out[0].filename 
 
                         if file_test( csp_fits ) then begin 
 
                             ;;
-                            hs_miuscat_csp_tosl, csp_fits, index=(n_time-1) 
-                            print, '###########################################'
-                            print, ' ' + string(n_time-1) + $
-                                ': ' + string( csp_out.time[(n_time-1)] ) + $
-                                '  ' + string( csp_out.time_lb[(n_time-1)] ) 
-                            ;;
-                            hs_miuscat_csp_tosl, csp_fits, index=(n_time-10) 
-                            print, '###########################################'
-                            print, ' ' + string(n_time-10) + $
-                                ': ' + string( csp_out.time[(n_time-10)] ) + $
-                                '  ' + string( csp_out.time_lb[(n_time-10)] ) 
-                            ;;
-                            hs_miuscat_csp_tosl, csp_fits, index=(n_time-20) 
-                            print, '###########################################'
-                            print, ' ' + string(n_time-20) + $
-                                ': ' + string( csp_out.time[(n_time-20)] ) + $
-                                '  ' + string( csp_out.time_lb[(n_time-20)] ) 
-                            ;;
-                            hs_miuscat_csp_tosl, csp_fits, index=(n_time-30) 
-                            print, '###########################################'
-                            print, ' ' + string(n_time-30) + $
-                                ': ' + string( csp_out.time[(n_time-30)] ) + $
-                                '  ' + string( csp_out.time_lb[(n_time-30)] ) 
+                            ;hs_miuscat_csp_tosl, csp_fits, index=(n_time-1) 
+                            ;print, '###########################################'
+                            ;print, ' ' + string(n_time-1) + $
+                            ;    ': ' + string( csp_out.time[(n_time-1)] ) + $
+                            ;    '  ' + string( csp_out.time_lb[(n_time-1)] ) 
+
                             ;; 
-                            hs_miuscat_csp_plot, csp_fits, /topng, /togif, $
-                                gif_delay=10
+                            ;hs_miuscat_csp_plot, csp_fits, /topng, /togif, $
+                            ;    gif_delay=10
                             ;; 
-                            hs_miuscat_csp_index, csp_fits, sigma=350.0, $
-                                index_list=index_list, /save_fits, $
-                                min_time=10.0, max_time=13.7, /silent
+                            ;hs_miuscat_csp_index, csp_fits, sigma=350.0, $
+                            ;    index_list=index_list, /save_fits, $
+                            ;    min_time=10.0, max_time=13.7, /silent
 
                         endif else begin 
 
@@ -121,3 +104,70 @@ pro hvdisp_csp_base_build, index_list=index_list, n_time=n_time
     print, '###################################################################'
 
 end 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+pro batch_csp_tosl, index, prefix=prefix
+
+    spawn, 'ls mius_*_n100.fits', csp_list   
+    n_csp = n_elements( csp_list )
+
+    if keyword_set( prefix ) then begin 
+        bases = strcompress( prefix, /remove_all ) + $
+            strcompress( string( index + 1 ), /remove_all ) + '.base' 
+    endif else begin 
+        bases = 'csp_' + strcompress( string( index + 1 ), /remove_all ) + $
+            '.base' 
+    endelse 
+
+    csp_struc = mrdfits( csp_list[0], 1 ) 
+    time_str  = string( csp_struc.time[ index ], format='(F8.4)' ) 
+    print, '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
+    print, ' CSP_TO_SL for : ' + string( index ) + '  ' + $
+        time_str + ' Gyr'
+    print, '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
+
+    openw, lun, bases, width=1000, /get_lun
+
+    for ii = 0, ( n_csp - 1 ), 1 do begin 
+
+        csp_file = csp_list[ ii ] 
+
+        hs_miuscat_csp_tosl, csp_file, index=index, base_line=base_line
+
+        printf, lun, base_line
+
+    endfor 
+
+    ;; 
+    close, 10 
+    free_lun, 10
+
+end
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+pro batch_csp_index, min, max, index_list=index_list
+
+    if keyword_set( index_list ) then begin 
+        index_list = strcompress( index_list, /remove_all ) 
+    endif else begin 
+        index_list = 'hs_index_all.lis' 
+    endelse
+
+    spawn, 'ls mius_*_n100.fits', csp_list   
+    n_csp = n_elements( csp_list )
+
+    for ii = 0, ( n_csp - 1 ), 1 do begin 
+
+        csp_file = csp_list[ ii ] 
+
+        hs_miuscat_csp_index, csp_file, sigma=350.0, index_list=index_list, $
+            /save_fits, min_time=min, max_time=max, /silent
+
+        free_all
+
+    endfor 
+
+end
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

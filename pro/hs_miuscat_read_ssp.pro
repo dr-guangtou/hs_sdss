@@ -1,6 +1,6 @@
 ; + 
 ; NAME:
-;              HS_MIUSCAT_READ_FITS 
+;              HS_MARASTON_READ_SSP 
 ;
 ; PURPOSE:
 ;              Read the fits format spectrum from MIUSCAT and MILES library 
@@ -21,7 +21,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-function hs_miuscat_read_ssp, file_miuscat, plot=plot, $
+function hs_miuscat_read_ssp, file_miuscat, plot=plot, silent=silent, $
     mass_file=mass_file 
 
     file_miuscat = strcompress( file_miuscat, /remove_all ) 
@@ -46,7 +46,7 @@ function hs_miuscat_read_ssp, file_miuscat, plot=plot, $
         sampling = hs_retrieve_para( head, tag, " '", 6 )
 
         ;; First, get a wavelength array 
-        n_pixel = fix( fxpar( head, 'NAXIS1' ) )
+        n_pixel  = fix( fxpar( head, 'NAXIS1' ) )
         min_wave = float( fxpar( head, 'CRVAL1' ) ) 
         d_wave = float( fxpar( head, 'CDELT1' ) ) 
         wave = min_wave + ( findgen( n_pixel ) * d_wave ) 

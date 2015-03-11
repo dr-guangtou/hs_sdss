@@ -76,8 +76,9 @@ function hs_spec_index_batch, wave, flux, index_list=index_list, $
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     index_prefix = index_list
-    strreplace, index_prefix, '.lis', '' 
-    strreplace, index_prefix, 'hs_', ''
+    temp0 = hs_string_replace( index_prefix, '.lis', '' ) 
+    temp1 = hs_string_replace( temp0,        'hs_',  '' )
+    index_prefix = temp1
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -257,6 +258,8 @@ function hs_spec_index_batch, wave, flux, index_list=index_list, $
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     return, output_struc
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    free_lun, lun
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 end 

@@ -130,6 +130,7 @@ pro hs_miuscat_csp_plot, csp_file, $
     max_wave = max( wave ) 
     wave_range = [ min_wave, max_wave ]
     ;; mass 
+    mass = mass / max( mass ) ;; Normalize to one
     min_mass = min( mass ) 
     max_mass = max( mass ) 
     mass_range = [ -0.09, ( max_mass * 1.15 ) ]

@@ -283,4 +283,7 @@ pro hs_miuscat_csp_index, csp_file, index_list=index_list, $
      ;; close file 
      close, lun
 
+     free_lun, lun
+     free_all
+
 end

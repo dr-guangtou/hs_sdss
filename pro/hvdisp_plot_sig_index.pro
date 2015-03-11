@@ -20,12 +20,12 @@
 ; CATEGORY:    HS_HVDISP
 ;------------------------------------------------------------------------------
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 pro hvdisp_plot_sig_index, result_list, index_name, suffix=suffix, $
     symbol_list=symbol_list, symbol_size=symbol_size, frame_list=frame_list, $
     red_include=red_include, plot_name=plot_name, label=label, legend=legend, $
     outline=outline, connect=connect, line_style=line_style, $
-    sample_list=sample_list, loc_plot=loc_plot
+    sample_list=sample_list, loc_plot=loc_plot, to_png=to_png
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; The name of the index 
@@ -80,7 +80,6 @@ pro hvdisp_plot_sig_index, result_list, index_name, suffix=suffix, $
             plot_name = index_name + '_sigma_trend.eps' 
         endelse
     endelse
-    plot_name = loc_plot + plot_name
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -151,6 +150,7 @@ pro hvdisp_plot_sig_index, result_list, index_name, suffix=suffix, $
     endif else begin 
         loc_plot = '' 
     endelse
+    plot_name = loc_plot + plot_name
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
             
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -241,7 +241,6 @@ pro hvdisp_plot_sig_index, result_list, index_name, suffix=suffix, $
             ( max_index + 2.0 * max_error )
         index_range = [ min_show, max_show ]
     endelse
-    print, index_range 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Min and Max value for sigma 
     min_sigma   = min( index_resarr.result.sig_value )
@@ -388,7 +387,8 @@ pro hvdisp_plot_sig_index, result_list, index_name, suffix=suffix, $
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         if ( z2_include NE -1 ) then begin 
             ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-            index_z2 = where( index_resarr[ jj ].result.red_index EQ 2 )
+            index_z2 = where( ( index_resarr[ jj ].result.red_index EQ 2 ) AND $
+                ( index_resarr[ jj ].result.sig_value GT 230.0 ) )
             ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
             if ( index_z2[0] EQ -1 ) then begin 
                 print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
@@ -444,7 +444,8 @@ pro hvdisp_plot_sig_index, result_list, index_name, suffix=suffix, $
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         if ( z3_include NE -1 ) then begin 
             ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-            index_z3 = where( index_resarr[ jj ].result.red_index EQ 3 )
+            index_z3 = where( ( index_resarr[ jj ].result.red_index EQ 3 ) AND $
+                ( index_resarr[ jj ].result.sig_value GT 230.0 ) )
             ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
             if ( index_z3[0] EQ -1 ) then begin 
                 print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
@@ -545,6 +546,17 @@ pro hvdisp_plot_sig_index, result_list, index_name, suffix=suffix, $
     set_plot, mydevice 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    if keyword_set( to_png ) then begin 
+        spawn, 'which convert', imagick_convert 
+        plot_png = hs_string_replace( plot_name, '.eps', '.png' )
+        if ( imagick_convert NE '' ) then begin 
+            spawn, imagick_convert + ' -density 200 ' + plot_name + $
+                ' -quality 90 -flatten ' + plot_png 
+        endif
+    endif 
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -554,20 +566,58 @@ end
 pro test_sigma_index 
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    result_list = strarr(4)
+    ;loc_plot = '~/Downloads/fig/sig/'
+    loc_plot = '~/Downloads/'
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;index_name = 'Lick_TiO2'
     ;index_name = 'SP_CaH1'
-    index_name = 'S05_Ba4933'
+    ;index_name = 'S05_Ba4933'
+    ;index_list = [ 'S05_Cr4264' ]
+    index_list = [ 'Lick_Ca4227', 'Lick_Ca4455', 'Lick_C4668', 'Lick_Hb', $
+        'Lick_Fe5015', 'Lick_Mg1', 'Lick_Mg2', 'Lick_Mgb', 'Lick_Fe5270', $
+        'Lick_Fe5335', 'Lick_Fe5406', 'Lick_Fe5709', 'Lick_Fe5782', 'Lick_NaD',$
+        'Lick_TiO1', 'Lick_TiO2', 'Lick_Hd_A', 'SP_aTiO', 'SP_bTiO', $
+        'SP_CaH1', 'SP_CaH2', 'LB_TiO2', 'LB_NaI8190', 'LB_Ca1', $
+        'TiO_CaH', 'TiO3_Chen', 'CaH_Chen', 'SH_D1b', 'SH_D1', $
+        'SH_G1', 'SH_G2', 'SH_G3', 'S05_CaHK', 'S05_Cr4264', 'S05_Sc6292', $
+        'SH_C3', 'S05_Ni4910', 'S05_V4928', 'S05_Ba4933' ]
+    num1 = n_elements( index_list )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    loc_index = '/home/hs/hvdisp/coadd/results/index/'
-    result_list[0] = loc_index + 'hvdisp_l_spec_robust_index_all.fits'
-    result_list[1] = loc_index + 'hvdisp_k_spec_robust_index_all.fits'
-    result_list[2] = loc_index + 'hvdisp_l_robust_mius_imix_index_all.fits'
-    result_list[3] = loc_index + 'hvdisp_l_spec_median_index_all.fits'
+    loc_index = '~/astro1/data/hvdisp/coadd/results/index/'
+    file1 = loc_index + 'hvdisp_l_spec_median_index_all.fits'
+    file2 = loc_index + 'hvdisp_l_median_comb_imix_index_all.fits'
+    file3 = loc_index + 'hvdisp_l_spec_robust_index_all.fits'
+    file4 = loc_index + 'hvdisp_k_robust_comb_imix_index_all.fits'
+    file5 = loc_index + 'hvdisp_k_robust_mius_ku13_index_all.fits'
+    file6 = loc_index + 'hvdisp_l_robust_comb_imix_index_all.fits'
+    file7 = loc_index + 'hvdisp_l_robust_mius_ku13_index_all.fits'
+    file8 = loc_index + 'hvdisp_k_spec_robust_index_all.fits'
+    file9 = loc_index + 'hvdisp_k_spec_median_index_all.fits'
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    hvdisp_plot_sig_index, result_list, index_name, suffix='test1', $ 
-        red_include=[ 0, 1, 2, 3 ], /outline, /connect, /label, /legend 
+    list1 = [ file5 ]
+    list2 = [ file7 ]
+    list3 = [ file9 ]
+    list4 = [ file3 ]
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    red1 = [ 1, 3 ]
+    red2 = [ 1, 2, 3 ]
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    for kk = 0, ( num1 - 1 ), 1 do begin  
+    ;for kk = 0, 1, 1 do begin  
+        print, '##### ' + index_list[kk]
+;        hvdisp_plot_sig_index, list2, index_list[kk], suffix='l_z1z3', $ 
+;            red_include=red1, /outline, /connect, /label, $
+;            loc_plot = loc_plot, /to_png 
+;        hvdisp_plot_sig_index, list1, index_list[kk], suffix='k_z1z3', $ 
+;            red_include=red1, /outline, /connect, /label, $
+;            loc_plot = loc_plot, /to_png 
+;        hvdisp_plot_sig_index, list3, index_list[kk], suffix='k_median', $ 
+;            red_include=red2, /outline, /connect, /label, $
+;            loc_plot = loc_plot, /to_png 
+        hvdisp_plot_sig_index, list4, index_list[kk], suffix='l_robust', $ 
+            red_include=red1, /outline, /connect, /label, $
+            loc_plot = loc_plot, /to_png ;, sample_list=[ 'PCA', 'Median' ] 
+    endfor 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

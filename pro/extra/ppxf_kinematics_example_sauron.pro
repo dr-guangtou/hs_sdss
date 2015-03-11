@@ -143,20 +143,6 @@ print, error[0:3]*sqrt(sol[6]), FORMAT='(10x,2f10.1,2f10.3)'
 ; commented line (equation 2 of Cappellari et al. 2009, ApJ, 704, L34):
 ;    
 ;print, 'Best-fitting redshift z:', (z + 1)*(1 + sol[0]/c) - 1
-
-;#####################################################
-; Expected Output from PPXF_KINEMATICS_EXAMPLE_SAURON: 
-; (after 0.5s on a 2.5GHz Core i5) 
-;#####################################################
-;
-;     feval         V     sigma        h3        h4        h5        h6  Chi2/DOF
-;        32     437.9     115.1     0.042     0.056     0.000     0.000     0.000
-;Nonzero Templates: 5 / 19
-;Templates weights:
-;    0.00455      0.000     0.0919      0.163      0.150      0.000      0.000      0.000      0.000      0.000
-;      0.000      0.000      0.000      0.000      0.000      0.000      0.604      0.000      0.000
-;Formal errors:    dV    dsigma       dh3       dh4
-;                 2.4       5.1     0.018     0.031
-         
+                          
 end
 ;------------------------------------------------------------------------------

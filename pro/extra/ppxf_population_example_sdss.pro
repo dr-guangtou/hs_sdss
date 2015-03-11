@@ -172,18 +172,5 @@ image_plot, reform(weights,s[2],s[3]), ages, metal, $
         AXISCOLOR='dark grey', TITLE='Mass Fraction'         
 !P.MULTI=0
 
-;###################################################
-; Expected Output from PPXF_POPULATION_EXAMPLE_SDSS:
-; (after 137s on a 2.5GHz Core i5) 
-;###################################################
-;
-; Component         V     sigma        h3        h4        h5        h6
-;         0    1292.5      97.8    -0.034     0.053     0.000     0.000
-;Function evaluations:          77
-;chi2/DOF:       1.0306874
-;Nonzero Templates: 65 / 156
-;Desired Delta Chi^2:      73.1984
-;Current Delta Chi^2:       82.211563
-
 end
 ;------------------------------------------------------------------------------

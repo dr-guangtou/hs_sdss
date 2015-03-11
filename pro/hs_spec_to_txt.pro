@@ -20,7 +20,7 @@
 ;------------------------------------------------------------------------------
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-pro hs_spec_to_txt, wave, flux, txt_file, error=error, mask=mask, dw=dw 
+pro hs_spec_to_txt, wave, flux, txt_file, error=error, mask=mask, dw=dw
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     n_pix = n_elements( wave ) 
@@ -91,7 +91,7 @@ pro hs_spec_to_txt, wave, flux, txt_file, error=error, mask=mask, dw=dw
             line = line + string( new_error[ii] ) + tab 
         endif 
         if keyword_set( mask ) then begin 
-            line = line + string( new_mask[ii] ) 
+            line = line + string( new_mask[ii], format='(I1)' ) 
         endif 
         printf, lun, line 
     endfor 

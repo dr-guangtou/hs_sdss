@@ -149,19 +149,6 @@ print, error[0:3]*sqrt(sol[6]), FORMAT='(10x,2f10.1,2f10.3)'
 ; commented line (equation 2 of Cappellari et al. 2009, ApJ, 704, L34):
 ;    
 ;print, 'Best-fitting redshift z:', (z + 1)*(1 + sol[0]/c) - 1
-
-;###################################################
-; Expected Output from PPXF_KINEMATICS_EXAMPLE_SDSS: 
-; (after 39s on a 2.5GHz Core i5) 
-;###################################################
-;
-; Component         V     sigma        h3        h4        h5        h6
-;         0    1296.0      97.7    -0.034     0.015     0.000     0.000
-;Function evaluations:          32
-;chi2/DOF:      0.94610427
-;Nonzero Templates: 5 / 156
-;Formal errors:    dV    dsigma       dh3       dh4
-;                 1.8       2.8     0.015     0.020
                                                             
 end
 ;------------------------------------------------------------------------------

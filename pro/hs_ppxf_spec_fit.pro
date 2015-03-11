@@ -38,8 +38,7 @@ pro hs_setup_ssp_library, base_file, velscale, fwhm_data, fwhm_libr, $
     if keyword_set( lib_location ) then begin 
         lib_location = strcompress( lib_location, /remove_all ) 
     endif else begin 
-        hvdisp_location, hvdisp_home, data_home
-        lib_location = data_home + 'lib/base/'
+        lib_location = 'base/'
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Resolution of the data
@@ -153,7 +152,7 @@ end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 pro hs_setup_emiline, wave, fwhm_data, emiline_templates, $
-    line_name, line_wave, n_emi=n_emi
+    line_name, line_wave, n_emi=n_emi, emi_file=emi_file
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     n_pix = n_elements( wave ) 
@@ -209,7 +208,7 @@ end
 pro hs_ppxf_spec_fit, spec_file, base_file, $
     fwhm_data=fwhm_data, fwhm_libr=fwhm_libr, $
     min_wave=min_wave,   max_wave=max_wave, $
-    hvdisp_home=hvdisp_home, $ 
+    data_home=data_home, lib_location=lib_location,$ 
     vel_guess=vel_guess,     sig_guess=sig_guess, $
     sn_ratio=sn_ratio, mdegree=mdegree, n_moments=n_moments, $
     quiet=quiet, debug=debug, suffix=suffix, $
@@ -263,15 +262,21 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    if NOT keyword_set( hvdisp_home ) then begin 
-        hvdisp_location, hvdisp_home, data_home
+    if NOT keyword_set( data_home ) then begin 
+        data_home   = '' 
+        loc_result  = ''
+        loc_base    = ''
     endif else begin 
-        hvdisp_home = strcompress( hvdisp_home, /remove_all ) 
+        data_home = strcompress( data_home, /remove_all ) 
+        loc_result  = data_home + 'coadd/results/ppxf/'
+        loc_base    = data_home + 'pro/ancil/'
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    loc_coadd   = hvdisp_home + 'coadd/'
-    loc_result  = hvdisp_home + 'coadd/results/ppxf/'
-    loc_base    = hvdisp_home + 'pro/ancil/'
+    if NOT keyword_set( lib_location ) then begin 
+        lib_location = data_home + 'base/' 
+    endif else begin 
+        lib_location = strcompress( lib_location, /remove_all ) 
+    endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -290,7 +295,7 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if NOT file_test( loc_base + base_file ) then begin 
         print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
-        print, ' Can not find the input spectrum file : ' + base_file + ' !!!' 
+        print, ' Can not find the base file : ' + base_file + ' !!!' 
         print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
         message, ' '
     endif
@@ -429,7 +434,10 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
         endelse
         ;; TODO: Empirical way, not sure if it is the best
         noise = ( SQRT( galaxy ) ) / sn_ratio
-    endif 
+    endif else begin 
+        noise = error_trim_log
+        sn_ratio = median( galaxy / noise ) 
+    endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if ~keyword_set( quiet ) then begin 
         print, '###############################################################'
@@ -457,7 +465,7 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
     hs_setup_ssp_library, base_file, velscale, fwhm_data, fwhm_libr, $
         stellar_templates, wave_range_temp, wave_log_temp, base_struc, $
         n_models=n_models, min_temp=min_wave_temp, max_temp=max_wave_temp, $
-        /quiet
+        /quiet, lib_location=lib_location
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     wave_lin_temp = exp( wave_log_temp )
     n_pixel_temp  = n_elements( wave_lin_temp )
@@ -804,8 +812,8 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
         mydevice = !d.name 
         !p.font=1
         set_plot, 'ps' 
-        psxsize = 28 
-        psysize = 22
+        psxsize = 36 
+        psysize = 28
         pos1 = [ 0.11, 0.30, 0.99, 0.98 ]
         pos2 = [ 0.11, 0.10, 0.99, 0.30 ]
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -819,11 +827,11 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
             /nodata, ytitle='Norm. Flux', xticklen=0.04
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; Stellar templates
-        for xx = 0, ( num_stellar - 1 ), 1 do begin 
-            temp = stellar_templates[ *, xx ]
-            cgOPlot, wave_lin_temp, ( temp / max( temp ) ), $
-                color=cgColor( 'BLK2' ), thick=0.6
-        endfor 
+        ;for xx = 0, ( num_stellar - 1 ), 1 do begin 
+        ;    temp = stellar_templates[ *, xx ]
+        ;    cgOPlot, wave_lin_temp, ( temp / max( temp ) ), $
+        ;        color=cgColor( 'BLK2' ), thick=0.6
+        ;endfor 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         if keyword_set( include_emission ) then begin 
         ;; Emission line templates
@@ -840,10 +848,12 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
         cgOplot, wave_lin, bestfit, color=cgColor( 'BLU6' ), linestyle=0, $
             thick=1.5
         ;;
-        cgOplot, wave_lin, best_ste,  color=cgColor( 'RED5' ), thick=1.5, $
-            linestyle=0 
+        if keyword_set( include_emission ) then begin 
+            cgOplot, wave_lin, best_ste, color=cgColor( 'RED5' ), thick=1.5, $
+                linestyle=0 
+        endif 
         ;;
-        cgOplot, wave_lin, mpoly,   color=cgColor( 'GRN5' ), linestyle=2, $
+        cgOplot, wave_lin, mpoly,  color=cgColor( 'GRN5' ), linestyle=2, $
             thick=1.5
         ;;
         cgPlot, wave_ori, ( flux_ori / flux_norm ), xs=1, ys=1, /noerase, $
@@ -876,9 +886,6 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
             cgOplot, wave_lin, best_gas,  color=cgColor( 'Blue' ), thick=1.8, $
                 linestyle=0
         endif
-        ;; Only for test
-        ;cgOplot, wave_lin, best_diff, color=cgColor( 'Red' ),   thick=1.5, $
-        ;    linestyle=0
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         device, /close 
         set_plot, mydevice 
@@ -917,7 +924,7 @@ pro test_fit
 
 ;    fwhm_data=fwhm_data, fwhm_libr=fwhm_libr, $
 ;    min_wave=min_wave,   max_wave=max_wave, $
-;    hvdisp_home=hvdisp_home, $ 
+;    data_home=data_home, $ 
 ;    vel_guess=vel_guess,     sig_guess=sig_guess, $
 ;    sn_ratio=sn_ratio, mdegree=mdegree, n_moments=n_moments, $
 ;    quiet=quiet, debug=debug, suffix=suffix, $
