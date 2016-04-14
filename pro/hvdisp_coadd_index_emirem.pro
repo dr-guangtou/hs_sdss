@@ -24,7 +24,7 @@ function get_red_value, red_index
     ;;; 
     case red_index of 
         '0' : red_value = '0.075' 
-        '1' : red_value = '0.047' 
+        '1' : red_value = '0.052' 
         '2' : red_value = '0.100' 
         '3' : red_value = '0.155'
         else: red_value = '-1.0'
@@ -54,7 +54,7 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-pro hvdisp_coadd_batch, input_list, index_list=index_list
+pro hvdisp_batch_index_emirem, input_list, index_list=index_list
 
     ;; 
     if keyword_set( index_list ) then begin 
@@ -77,7 +77,7 @@ pro hvdisp_coadd_batch, input_list, index_list=index_list
         coadd_prefix = temp[ n_elements( temp ) - 2 ] 
         strreplace, coadd_prefix, 'hvdisp_', '' 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        hvdisp_coadd_index, coadd_list, index_list=index_input, $
+        hvdisp_coadd_index_emirem, coadd_list, index_list=index_input, $
             suffix=coadd_prefix, /save_csv 
     endfor 
 
@@ -85,7 +85,7 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-pro hvdisp_coadd_index, coadd_list, index_list=index_list, $
+pro hvdisp_coadd_index_emirem, coadd_list, index_list=index_list, $
     hvdisp_home=hvdisp_home, suffix=suffix, save_csv=save_csv 
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -168,6 +168,28 @@ pro hvdisp_coadd_index, coadd_list, index_list=index_list, $
     for ii = 0, ( n_spec - 1 ), 1 do begin 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         spec_input = strcompress( inputs[ ii ], /remove_all ) 
+        temp = strsplit( spec_input, '/', /extract )
+        hvdisp_index = temp[0] 
+        temp = strsplit( hvdisp_index, '_', /extract )
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        red_index = temp[0] 
+        strreplace, red_index, 'z', '' 
+        red_value = get_red_value( red_index )
+        sig_index = strmid( temp[1], 1, 1 ) 
+        sig_value = get_sig_value( sig_index )
+        if red_index EQ 0 then begin 
+            snr_estimate = 750
+        endif else begin 
+            if red_index EQ 1 then begin 
+                snr_estimate = 720 
+            endif else begin 
+                if red_index EQ 2 then begin 
+                    snr_estimate = 650 
+                endif else begin 
+                    snr_estimate = 600
+                endelse
+            endelse
+        endelse
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         if NOT file_test( loc_coadd + spec_input ) then begin 
             print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
@@ -177,8 +199,8 @@ pro hvdisp_coadd_index, coadd_list, index_list=index_list, $
         endif else begin  
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
             ;; Read in the spectrum 
-            readcol, ( loc_coadd + spec_input ), spec_wave, spec_flux, $
-                spec_error, spec_flag, format='F,D,D,I', comment='#', $
+            readcol, ( loc_coadd + spec_input ), spec_wave, ori_flux, $
+                spec_flux, emi_flux, format='F,D,D,I', comment='#', $
                 delimiter=' ', /silent 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
             temp = strsplit( spec_input, '/.', /extract )
@@ -186,22 +208,15 @@ pro hvdisp_coadd_index, coadd_list, index_list=index_list, $
             temp = strsplit( spec_input, '/', /extract )
             spec_file   = temp[ n_elements( temp ) - 1 ]
             index_results = hs_spec_index_batch( spec_wave, spec_flux, $
-                snr=600, /toair, index_line=index_line, index_list=index_use, $
+                snr=snr_estimate, /toair, index_line=index_line, index_list=index_use, $
                 header_line=header_line, /silent, prefix=spec_prefix ) 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         endelse
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        temp = strsplit( spec_input, '/', /extract )
-        hvdisp_index = temp[0] 
         ;;; ---- Add HVDISP_INDEX ----
         struct_add_field, index_results, 'hvdisp_index', hvdisp_index
         struct_add_field, index_results, 'spec_index',   spec_prefix
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        temp = strsplit( hvdisp_index, '_', /extract )
-        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        red_index = temp[0] 
-        strreplace, red_index, 'z', '' 
-        red_value = get_red_value( red_index )
         if ( float( red_value ) LE 0.0 ) then begin 
             message, ' Something wrong with the redshift index !!'
         endif 
@@ -209,8 +224,6 @@ pro hvdisp_coadd_index, coadd_list, index_list=index_list, $
         struct_add_field, index_results, 'red_index', red_index
         struct_add_field, index_results, 'red_value', float( red_value )
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        sig_index = strmid( temp[1], 1, 1 ) 
-        sig_value = get_sig_value( sig_index )
         if ( float( sig_value ) LE 0.0 ) then begin 
             message, ' Something wrong with the velocity dispersion index !!'
         endif 
@@ -254,7 +267,7 @@ pro hvdisp_coadd_index, coadd_list, index_list=index_list, $
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; ---- Save a FITS catalog ----
-    fits_output = output_prefix + '_ori.fits' 
+    fits_output = output_prefix + '_sub.fits' 
     mwrfits, index_strucarr, fits_output, /create
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -262,7 +275,7 @@ pro hvdisp_coadd_index, coadd_list, index_list=index_list, $
     ;; ---- Save a CSV catalog ----
     if keyword_set( save_csv ) then begin 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        csv_output = output_prefix + '_ori.csv'
+        csv_output = output_prefix + '_sub.csv'
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         openw,  lun, csv_output, /get_lun, width=8000 
         printf, lun, header_line 

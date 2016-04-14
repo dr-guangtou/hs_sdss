@@ -22,23 +22,31 @@
 ;------------------------------------------------------------------------------
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-pro hvdisp_plot_red_index, result_file, index_name, csp_list, suffix=suffix, $
+pro hvdisp_plot_red_index, result_file, index_name, csp_list, red_ref, suffix=suffix, $
     symbol_list=symbol_list, symbol_size=symbol_size, frame_list=frame_list, $
     plot_name=plot_name, label=label, legend=legend, outline=outline, $
     connect=connect, line_style=line_style, sample_list=sample_list, $
-    loc_plot=loc_plot, min_sigma=min_sigma, normalize=normalize
+    loc_plot=loc_plot, min_sigma=min_sigma, normalize=normalize, $
+    sig_ref=sig_ref, no_z0=no_z0, no_z1=no_z1, no_z2=no_z2
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Time range 
-    time_range = [ 11.40, 13.30 ]
+    time_range = [ 11.50, 13.20 ]
     ;; Redshift arrary 
-    red_arr = [ 0.075, 0.047, 0.100, 0.155 ]
-    age_arr = [ 12.72, 13.08, 12.40, 11.76 ]
+    red_arr = [ 0.075, 0.052, 0.100, 0.155 ]
+    age_arr = [ 12.72, 13.01, 12.40, 11.76 ]
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if keyword_set( min_sigma ) then begin 
         min_sigma = float( min_sigma ) 
     endif else begin 
-        min_sigma = 240.0 
+        min_sigma = 259.0 
+    endelse
+
+    print, '## Reference redsfhit index : ' + string(red_ref)
+    if keyword_set( sig_ref ) then begin 
+        sig_ref = float(sig_ref) 
+    endif else begin 
+        sig_ref = 310.0
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; The name of the index 
@@ -77,8 +85,8 @@ pro hvdisp_plot_red_index, result_file, index_name, csp_list, suffix=suffix, $
         max_observe = max_index
         min_observe = min_index
         ;; Findout the reference index value 
-        index_ref = where( ( index_struc.sig_value EQ max( sig_uniq ) ) AND $ 
-            ( index_struc.red_index EQ 1 ) ) 
+        index_ref = where( ( index_struc.sig_value EQ sig_ref ) AND $ 
+            ( index_struc.red_index EQ red_ref ) ) 
         value_ref = index_struc[ index_ref ].( index_num )
     endif else begin 
         print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
@@ -93,11 +101,16 @@ pro hvdisp_plot_red_index, result_file, index_name, csp_list, suffix=suffix, $
     if keyword_set( plot_name ) then begin 
         plot_name = strcompress( plot_name, /remove_all ) 
     endif else begin 
-        if keyword_set( suffix ) then begin 
-            plot_name = index_name + '_' + suffix + '.eps'
+        if keyword_set( suffix ) then begin
+            plot_name = index_name + '_red_trend' + suffix
         endif else begin 
-            plot_name = index_name + '_sigma_trend.eps' 
+            plot_name = index_name + '_red_trend' 
         endelse
+    endelse
+    if keyword_set(normalize) then begin 
+        plot_name = plot_name + '_norm.eps'
+    endif else begin 
+        plot_name = plot_name + '.eps'
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -138,7 +151,7 @@ pro hvdisp_plot_red_index, result_file, index_name, csp_list, suffix=suffix, $
                 s_frame = frame_list 
             endelse
         endif else begin 
-            s_frame = [  9,  6,  4,  5, 11, 12 ]
+            s_frame = [ 9, 6, 4, 5, 11, 12 ]
         endelse
     endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -188,6 +201,7 @@ pro hvdisp_plot_red_index, result_file, index_name, csp_list, suffix=suffix, $
     endif else begin 
         readcol, csp_list, csp_files, format='A', comment='#', /silent 
         num_csp = n_elements( csp_files ) 
+
         for jj = 0, ( num_csp - 1 ), 1 do begin 
             csp_struc = mrdfits( csp_files[ jj ], 1 )
             index_tmp = where( ( csp_struc.cos_age GE time_range[0] ) AND $
@@ -215,8 +229,22 @@ pro hvdisp_plot_red_index, result_file, index_name, csp_list, suffix=suffix, $
                 models[ jj ].time  = csp_time 
                 models[ jj ].index = csp_index
             endelse
+
             if keyword_set( normalize ) then begin 
-                index_min = ( n_elements( csp_time ) - 1 ) 
+                index_min = 13
+                if red_ref EQ 0 then begin 
+                    index_min = 10 
+                endif 
+                if red_ref EQ 2 then begin 
+                    index_min = 7 
+                endif 
+                if red_ref EQ 3 then begin 
+                    index_min = 2 
+                endif 
+                ;index_min = ( n_elements( csp_time ) - 2 ) 
+                ;time_diff = abs(csp_time - age_ref)
+                ;index_aa = where(time_diff EQ min(time_diff))
+                ;index_min = index_aa[0]
                 models[ jj ].index = ( models[ jj ].index - $
                     csp_index[ index_min ] ) + value_ref
             endif 
@@ -250,39 +278,69 @@ pro hvdisp_plot_red_index, result_file, index_name, csp_list, suffix=suffix, $
         /nodata, /noerase 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     for kk = 0, ( num_csp - 1 ), 1 do begin 
-        cgOplot, models[ kk ].time, models[ kk ].index, linestyle=0, $
-            thick=2.0, color=cgColor( 'BLK4' ) 
+        cgOplot, models[ kk ].time, models[ kk ].index, linestyle=2, $
+            thick=4.0, color=cgColor( 'BLK4' ) 
     endfor 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     for mm = 0, ( num_sig - 1 ), 1 do begin 
         sig_plot = sig_uniq[ mm ] 
-        index_0 = where( ( index_struc.sig_value EQ sig_plot ) AND $
-            ( index_struc.red_index EQ 0 ) ) 
-        if ( index_0[0] NE -1 ) then begin 
-            ;cgOplot, age_arr[0], index_struc[ index_0 ].( index_num ), $
-            ;    psym=s_type[ mm ], symsize=s_size, $
-            ;    color=cgColor( sig_color[ mm ] ) 
+
+        if not keyword_set(no_z0) then begin
+            index_0 = where( ( index_struc.sig_value EQ sig_plot ) AND $
+                ( index_struc.red_index EQ 0 ) ) 
+            if ( index_0[0] NE -1 ) then begin 
+                cgOplot, age_arr[0], index_struc[ index_0 ].( index_num ), $
+                    psym=s_type[ mm ], symsize=s_size, $
+                    color=cgColor( sig_color[ mm ] ) 
+                ye = index_struc[ index_0 ].( error_num )
+                cgOPlot, age_arr[0], index_struc[ index_0 ].( index_num ), $
+                    /err_clip, err_color=cgColor( 'BLK6'), $ 
+                    err_thick=5.0, err_width=0.01, $
+                    err_yhigh=ye, err_ylow=ye, psym=1
+            endif 
+        endif
+
+        if not keyword_set(no_z1) then begin
+            index_1 = where( ( index_struc.sig_value EQ sig_plot ) AND $
+                ( index_struc.red_index EQ 1 ) ) 
+            if ( index_1[0] NE -1 ) then begin 
+                cgOplot, age_arr[1], index_struc[ index_1 ].( index_num ), $
+                    psym=s_type[ mm ], symsize=s_size, $
+                    color=cgColor( sig_color[ mm ] )
+                ye = index_struc[ index_1 ].( error_num )
+                cgOPlot, age_arr[1], index_struc[ index_1 ].( index_num ), $
+                    /err_clip, err_color=cgColor( 'BLK6'), $ 
+                    err_thick=5.0, err_width=0.01, $
+                    err_yhigh=ye, err_ylow=ye, psym=1
+            endif 
         endif 
-        index_1 = where( ( index_struc.sig_value EQ sig_plot ) AND $
-            ( index_struc.red_index EQ 1 ) ) 
-        if ( index_1[0] NE -1 ) then begin 
-            cgOplot, age_arr[1], index_struc[ index_1 ].( index_num ), $
-                psym=s_type[ mm ], symsize=s_size, $
-                color=cgColor( sig_color[ mm ] )
-        endif 
-        index_2 = where( ( index_struc.sig_value EQ sig_plot ) AND $
-            ( index_struc.red_index EQ 2 ) ) 
-        if ( index_2[0] NE -1 ) then begin 
-            cgOplot, age_arr[2], index_struc[ index_2 ].( index_num ), $
-                psym=s_type[ mm ], symsize=s_size, $
-                color=cgColor( sig_color[ mm ] )
-        endif 
+
+        if not keyword_set(no_z2) then begin
+            index_2 = where( ( index_struc.sig_value EQ sig_plot ) AND $
+                ( index_struc.red_index EQ 2 ) ) 
+            if ( index_2[0] NE -1 ) then begin 
+                cgOplot, age_arr[2], index_struc[ index_2 ].( index_num ), $
+                    psym=s_type[ mm ], symsize=s_size, $
+                    color=cgColor( sig_color[ mm ] )
+                ye = index_struc[ index_2 ].( error_num )
+                cgOPlot, age_arr[2], index_struc[ index_2 ].( index_num ), $
+                    /err_clip, err_color=cgColor( 'BLK6'), $ 
+                    err_thick=5.0, err_width=0.01, $
+                    err_yhigh=ye, err_ylow=ye, psym=1
+            endif 
+        endif
+
         index_3 = where( ( index_struc.sig_value EQ sig_plot ) AND $
             ( index_struc.red_index EQ 3 ) ) 
         if ( index_3[0] NE -1 ) then begin 
             cgOplot, age_arr[3], index_struc[ index_3 ].( index_num ), $
                 psym=s_type[ mm ], symsize=s_size, $
                 color=cgColor( sig_color[ mm ] )
+            ye = index_struc[ index_3 ].( error_num )
+            cgOPlot, age_arr[3], index_struc[ index_3 ].( index_num ), $
+                /err_clip, err_color=cgColor( 'BLK6'), $ 
+                err_thick=5.0, err_width=0.01, $
+                err_yhigh=ye, err_ylow=ye, psym=1
         endif 
     endfor 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -342,26 +400,44 @@ end
 pro test_red_index 
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    loc_plot = '~/Downloads/fig/csp/'
+    ;loc_plot = '~/Downloads/fig/csp/'
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     result_list = strarr(1)
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    index_name = 'LB_TiO2'
+    index_list = [ 'Lick_Ca4227', 'Lick_Ca4455', 'Lick_C4668', 'Lick_Hb', $
+        'Lick_Fe5015', 'Lick_Mg1', 'Lick_Mg2', 'Lick_Mgb', 'Lick_Fe5270', $
+        'Lick_Fe5335', 'Lick_Fe5406', 'Lick_Fe5709', 'Lick_Fe5782', 'Lick_NaD',$
+        'Lick_TiO1', 'Lick_TiO2', 'Lick_Hd_A', 'SP_aTiO', 'SP_bTiO', $
+        'SP_CaH1', 'SP_CaH2', 'LB_TiO2', $
+        'TiO_CaH', 'TiO3_Chen', 'CaH_Chen',  $
+        'S05_CaHK', 'S05_Cr4264', 'S05_Sc6292', $
+        'S05_Ni4910', 'S05_V4928', 'S05_Ba4933' ]
+    ;index_name = 'Lick_HB'
     ;index_name = 'SP_CaH1'
     ;index_name = 'S05_Ba4933'
+    red_list = [0, 1, 2] 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;loc_index = '/Users/songhuang/astro1/data/hvdisp/coadd/results/index/'
-    loc_index = '/home/hs/hvdisp/coadd/results/index/'
-    index_result = loc_index + 'hvdisp_k_robust_mius_imix_index_all.fits'
-    ;index_result = loc_index + 'hvdisp_l_spec_robust_index_all.fits'
+    loc_index = '/home/hs/Dropbox/work/temp/hvdisp/index_measure/'
+    index_result = loc_index + 'hvdisp_l_robust_mius_imix_index_all_air_sub.fits'
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    csp_loc = '/home/hs/hvdisp/csp/miu/'
+    csp_loc = '/home/hs/hvdisp/csp/pro/use/'
     ;csp_loc = '/Users/songhuang/astro1/data/hvdisp/csp/miu/'
-    ;csp_list = csp_loc + 'mius_csp_s13_index2.lis' 
-    csp_list = csp_loc + 'aaa.lis' 
+    csp_list = csp_loc + 'mius_un13z6_use.lis' 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    hvdisp_plot_red_index, index_result, index_name, csp_list, $
-        min_sigma=260.0, suffix='redtrend', /normalize, loc_plot=loc_plot 
+    for ii = 0, (n_elements(index_list) - 1), 1 do begin 
+        index_name = index_list[ii]
+        print, '#### Plot Index : ' + index_name
+        for jj= 0, (n_elements(red_list) - 1), 1 do begin 
+            red = red_list[jj]
+            hvdisp_plot_red_index, index_result, index_name, csp_list, red, $
+                min_sigma=260.0, suffix=strcompress(string(red), /remove_all), $
+                /normalize, /label, /outline
+            hvdisp_plot_red_index, index_result, index_name, csp_list, red, $
+                min_sigma=260.0, suffix=strcompress(string(red), /remove_all), $
+                /outline, /label
+        endfor 
+    endfor 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

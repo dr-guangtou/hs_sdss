@@ -249,7 +249,7 @@ pro hs_coadd_sdss_post, prefix
      boot_norm_1 = hs_spec_polynorm( wave, boot_med_tmp, 2, mask=final_mask, $
          /plot, /find_peak, eps_name=boot_norm_plot_1, $ 
          medwidth=200.0, smoothing=150.0, n_neg=10 )
-     boot_norm_index_1 = hs_list_measure_index( boot_norm_1.spec_norm, $
+     boot_norm_index_1 = hs_spec_index_batch( boot_norm_1.spec_norm, $
          boot_norm_1.wave, snr=800.0, /toair, /silent, $
          header_line=header_line, index_line=boot_line_1, $
          index_list=index_list )
@@ -258,7 +258,7 @@ pro hs_coadd_sdss_post, prefix
      boot_norm_2 = hs_spec_polynorm( wave, boot_med_tmp, 4, mask=final_mask, $
          /plot, /find_peak, eps_name=boot_norm_plot_2, $ 
          medwidth=200.0, smoothing=150.0, n_neg=10 )
-     boot_norm_index_2 = hs_list_measure_index( boot_norm_2.spec_norm, $
+     boot_norm_index_2 = hs_spec_index_batch( boot_norm_2.spec_norm, $
          boot_norm_2.wave, snr=800.0, /toair, /silent, $
          header_line=header_line, index_line=boot_line_2, $
          index_list=index_list )
@@ -267,7 +267,7 @@ pro hs_coadd_sdss_post, prefix
      boot_norm_3 = hs_spec_polynorm( wave, boot_med_tmp, 6, mask=final_mask, $
          /plot, /find_peak, eps_name=boot_norm_plot_3, $ 
          medwidth=200.0, smoothing=150.0, n_neg=10 )
-     boot_norm_index_3 = hs_list_measure_index( boot_norm_3.spec_norm, $
+     boot_norm_index_3 = hs_spec_index_batch( boot_norm_3.spec_norm, $
          boot_norm_3.wave, snr=800.0, /toair, /silent, $
          header_line=header_line, index_line=boot_line_3, $
          index_list=index_list )
@@ -276,7 +276,7 @@ pro hs_coadd_sdss_post, prefix
      boot_norm_4 = hs_spec_polynorm( wave, boot_med_tmp, 2, mask=final_mask, $
          /plot, /find_peak, eps_name=boot_norm_plot_4, $ 
          medwidth=200.0, smoothing=150.0, norm0=4050.0, n_neg=10 )
-     boot_norm_index_4 = hs_list_measure_index( boot_norm_4.spec_norm, $
+     boot_norm_index_4 = hs_spec_index_batch( boot_norm_4.spec_norm, $
          boot_norm_4.wave, snr=800.0, /toair, /silent, $
          header_line=header_line, index_line=boot_line_4, $
          index_list=index_list )
@@ -287,7 +287,7 @@ pro hs_coadd_sdss_post, prefix
      pca_norm_1 = hs_spec_polynorm( wave, pca_avg_tmp, 2, mask=pca_mask, $
          /plot, /find_peak, eps_name=pca_norm_plot_1, $ 
          medwidth=200.0, smoothing=150.0, n_neg=10 )
-     pca_norm_index_1 = hs_list_measure_index( pca_norm_1.spec_norm, $
+     pca_norm_index_1 = hs_spec_index_batch( pca_norm_1.spec_norm, $
          pca_norm_1.wave, snr=800.0, /toair, /silent, $
          header_line=header_line, index_line=pca_line_1, $
          index_list=index_list )
@@ -296,7 +296,7 @@ pro hs_coadd_sdss_post, prefix
      pca_norm_2 = hs_spec_polynorm( wave, pca_avg_tmp, 4, mask=pca_mask, $
          /plot, /find_peak, eps_name=pca_norm_plot_2, $ 
          medwidth=200.0, smoothing=150.0, n_neg=10 )
-     pca_norm_index_2 = hs_list_measure_index( pca_norm_2.spec_norm, $
+     pca_norm_index_2 = hs_spec_index_batch( pca_norm_2.spec_norm, $
          pca_norm_2.wave, snr=800.0, /toair, /silent, $
          header_line=header_line, index_line=pca_line_2, $
          index_list=index_list )
@@ -305,7 +305,7 @@ pro hs_coadd_sdss_post, prefix
      pca_norm_3 = hs_spec_polynorm( wave, pca_avg_tmp, 6, mask=pca_mask, $
          /plot, /find_peak, eps_name=pca_norm_plot_3, $ 
          medwidth=200.0, smoothing=150.0, n_neg=10 )
-     pca_norm_index_3 = hs_list_measure_index( pca_norm_3.spec_norm, $
+     pca_norm_index_3 = hs_spec_index_batch( pca_norm_3.spec_norm, $
          pca_norm_3.wave, snr=800.0, /toair, /silent, $
          header_line=header_line, index_line=pca_line_3, $
          index_list=index_list )
@@ -314,7 +314,7 @@ pro hs_coadd_sdss_post, prefix
      pca_norm_4 = hs_spec_polynorm( wave, pca_avg_tmp, 2, mask=pca_mask, $
          /plot, /find_peak, eps_name=pca_norm_plot_4, $ 
          medwidth=200.0, smoothing=150.0, norm0=4050.0, n_neg=10 )
-     pca_norm_index_4 = hs_list_measure_index( pca_norm_4.spec_norm, $
+     pca_norm_index_4 = hs_spec_index_batch( pca_norm_4.spec_norm, $
          pca_norm_4.wave, snr=800.0, /toair, /silent, $
          header_line=header_line, index_line=pca_line_4, $
          index_list=index_list )
@@ -383,7 +383,7 @@ pro hs_coadd_sdss_post, prefix
      stat_index_file = prefix + '_boot_all_index_stat.fits' 
      openw, lun, boot_index_file, /get_lun 
      for ii = 0, 10, 1 do begin 
-         boot_all_index = hs_list_measure_index( struc_2.spec_boot[*,ii], $
+         boot_all_index = hs_spec_index_batch( struc_2.spec_boot[*,ii], $
              struc_2.wave, /silent, snr=600.0, /toair, $
              header_line=header_line, index_line=all_line, $ 
              index_list=index_list )
@@ -431,14 +431,14 @@ pro hs_coadd_sdss_post, prefix
      mean_index_file = prefix + '_mean_index.csv' 
      openw, lun, mean_index_file, /get_lun 
      ;; Original one 
-     mean_index = hs_list_measure_index( coadd_struc.pca_avg, $
+     mean_index = hs_spec_index_batch( coadd_struc.pca_avg, $
              coadd_struc.wave, /silent, snr=600.0, /toair, $
              header_line=header_line, index_line=all_line, $ 
              index_list=index_list )
      printf, lun, header_line 
      printf, lun, all_line 
      ;; Normalization 1 
-     mean_index = hs_list_measure_index( coadd_struc.pca_norm_1, $
+     mean_index = hs_spec_index_batch( coadd_struc.pca_norm_1, $
              coadd_struc.wave, /silent, snr=600.0, /toair, $
              header_line=header_line, index_line=all_line, $ 
              index_list=index_list, /plot, prefix=prefix )

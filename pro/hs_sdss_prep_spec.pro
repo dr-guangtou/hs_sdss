@@ -69,8 +69,8 @@
 ;------------------------------------------------------------------------------
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-pro hs_sdss_prep_spec, spec_file, $
-    plot=plot, quiet=quiet, $ 
+pro hs_sdss_prep_spec, spec_file, suffix=suffix, $
+    plot=plot, quiet=quiet, no_extcorr=no_extcorr, $ 
     save_indexf=save_indexf, save_ulyss=save_ulyss, save_sl=save_sl, $
     ccm=ccm, odl=odl, save_ez=save_ez, ipath=ipath, new_vdp=new_vdp
 
@@ -94,7 +94,12 @@ endif else begin
     ipath = strcompress( ipath, /remove_all ) 
 endelse
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;; Suffix of the output file 
+if keyword_set( suffix ) then begin 
+    suffix = strcompress( suffix, /remove_all )
+endif else begin
+    suffix = 'hs'
+endelse
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Read in spectra from SDSS DR8/DR9.  
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -268,26 +273,30 @@ max_rest = max( rest )
 coeff0 = alog10( double( wave[0] ) ) 
 coeff0_new = coeff0 - alog10( 1.0D + double( z ) )
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Correction of the Galactic extinction 
-;; Convert the RA and DEC of the plug into Galactic coordinate: 
-glactc, ra_plug, dec_plug, 2000., gl_plug, gp_plug, 1, /deg
-;; Get the E(B-V) value for GL_PLUG and GP_PLUG 
-ebv = dust_getval( gl_plug, gp_plug, ipath=ipath, /interp, /pg10 ) 
-;; A(V) = E(B-V) * R(V)
-R_v = 3.1 
-;; Use the extinction curve from CCM(1989) or O'Donnel(1994)
-;; where alam: A(lamda)/A(V)
-if keyword_set( CCM ) then begin 
-    alam = ext_ccm( wave, R_v )
-endif else begin 
-    if keyword_set( ODL ) then begin 
-        alam = ext_odonnell( wave, R_v )
-    endif else begin 
+if keyword_set(no_extcorr) then begin
+    ;; Correction of the Galactic extinction 
+    ;; Convert the RA and DEC of the plug into Galactic coordinate: 
+    glactc, ra_plug, dec_plug, 2000., gl_plug, gp_plug, 1, /deg
+    ;; Get the E(B-V) value for GL_PLUG and GP_PLUG 
+    ebv = dust_getval( gl_plug, gp_plug, ipath=ipath, /interp, /pg10 ) 
+    ;; A(V) = E(B-V) * R(V)
+    R_v = 3.1 
+    ;; Use the extinction curve from CCM(1989) or O'Donnel(1994)
+    ;; where alam: A(lamda)/A(V)
+    if keyword_set( CCM ) then begin 
         alam = ext_ccm( wave, R_v )
+    endif else begin 
+        if keyword_set( ODL ) then begin 
+            alam = ext_odonnell( wave, R_v )
+        endif else begin 
+            alam = ext_ccm( wave, R_v )
+        endelse
     endelse
+    ;; Actuall correction 
+    flux_deredden = ( flux * 10.0^( 0.4 * ebv[0] * alam * R_v ) )
+endif else begin 
+    flux_deredden = flux
 endelse
-;; Actuall correction 
-flux_deredden = ( flux * 10.0^( 0.4 * ebv[0] * alam * R_v ) )
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 if NOT keyword_set( QUIET ) then begin 
     print, '##############################################################'
@@ -329,7 +338,7 @@ endif
 ;; First save a binary table containing all the information: 
 ;; llam; wave; rest; flux; flux_deredden; ivar; sigma; mask; mask_bad; 
 ;; mask_sky; mask_all; skye; sky_obj_ratio 
-new_file = loc_spec + spec_string + '_hs.fits' 
+new_file = loc_spec + spec_string + '_' + suffix + '.fits' 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 header_new = strarr( 19 ) 
 header_new[0] = 'SIMPLE  =                    T /Primary Header'

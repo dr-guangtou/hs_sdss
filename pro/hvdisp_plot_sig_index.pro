@@ -567,7 +567,7 @@ pro test_sigma_index
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;loc_plot = '~/Downloads/fig/sig/'
-    loc_plot = '~/Downloads/'
+    loc_plot = '~/Dropbox/work/temp/hvdisp/'
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;index_name = 'Lick_TiO2'
     ;index_name = 'SP_CaH1'
@@ -583,7 +583,7 @@ pro test_sigma_index
         'SH_C3', 'S05_Ni4910', 'S05_V4928', 'S05_Ba4933' ]
     num1 = n_elements( index_list )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    loc_index = '~/astro1/data/hvdisp/coadd/results/index/'
+    loc_index = '/media/hs/Astro2/hvdisp/coadd/results/index/'
     file1 = loc_index + 'hvdisp_l_spec_median_index_all.fits'
     file2 = loc_index + 'hvdisp_l_median_comb_imix_index_all.fits'
     file3 = loc_index + 'hvdisp_l_spec_robust_index_all.fits'
@@ -593,14 +593,24 @@ pro test_sigma_index
     file7 = loc_index + 'hvdisp_l_robust_mius_ku13_index_all.fits'
     file8 = loc_index + 'hvdisp_k_spec_robust_index_all.fits'
     file9 = loc_index + 'hvdisp_k_spec_median_index_all.fits'
+
+    file_a = loc_index + 'hvdisp_l_robust_comb_imix_index_all.fits'
+    file_b = loc_index + 'hvdisp_l_median_comb_imix_index_all.fits'
+
+    file_c = loc_index + 'hvdisp_l_robust_mius_imix_index_all.fits'
+    file_d = loc_index + 'hvdisp_l_median_mius_imix_index_all.fits'
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     list1 = [ file5 ]
     list2 = [ file7 ]
     list3 = [ file9 ]
     list4 = [ file3 ]
+
+    list_new = [ file_a, file_b, file_c, file_d ]
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     red1 = [ 1, 3 ]
     red2 = [ 1, 2, 3 ]
+
+    red_all = [ 0, 1, 2, 3 ]
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     for kk = 0, ( num1 - 1 ), 1 do begin  
     ;for kk = 0, 1, 1 do begin  
@@ -614,9 +624,10 @@ pro test_sigma_index
 ;        hvdisp_plot_sig_index, list3, index_list[kk], suffix='k_median', $ 
 ;            red_include=red2, /outline, /connect, /label, $
 ;            loc_plot = loc_plot, /to_png 
-        hvdisp_plot_sig_index, list4, index_list[kk], suffix='l_robust', $ 
-            red_include=red1, /outline, /connect, /label, $
-            loc_plot = loc_plot, /to_png ;, sample_list=[ 'PCA', 'Median' ] 
+        hvdisp_plot_sig_index, list_new, index_list[kk], suffix='new', $ 
+            red_include=red_all, /outline, /connect, /label, $
+            loc_plot = loc_plot, /to_png, $
+            sample_list=[ 'Avg_1', 'Med_1', 'Avg_2', 'Med_2' ] 
     endfor 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

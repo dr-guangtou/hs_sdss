@@ -18,13 +18,14 @@
 ;------------------------------------------------------------------------------
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-pro hs_batch_prep_spec, list_file, data_home=data_home
+pro hs_batch_prep_spec, list_file, hvdisp_home=hvdisp_home, data_home=data_home
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    if NOT keyword_set( hvdisp_home ) then begin 
+    if NOT keyword_set( data_home ) then begin 
         hvdisp_location, hvdisp_home, data_home
     endif else begin 
-        data_home = strcompress( hvdisp_home, /remove_all ) 
+        data_home = strcompress( data_home, /remove_all ) 
+        hvdisp_home = strcompress( hvdisp_home, /remove_all ) 
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if NOT file_test( list_file ) then begin 
@@ -41,8 +42,7 @@ pro hs_batch_prep_spec, list_file, data_home=data_home
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     for ii = 0L, ( n_spec - 1 ), 1 do begin 
-    ;;for ii = 0, 1, 1 do begin 
-        ;; 
+
         head = data_home + 'spec/' + list_plate[ ii ] + '/'
         spec_file = head + list_spec[ ii ]
         ;;

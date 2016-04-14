@@ -26,12 +26,12 @@ pro hvdisp_location, hvdisp_home, data_home, mius_home=mius_home
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     spawn, 'uname -a', sysinfo  
     if ( strpos( sysinfo, 'Darwin' ) NE -1 ) then begin 
-        hvdisp_home = '/Volumes/Astro1/data/hvdisp/'
-        data_home   = '/Volumes/Astro1/data/hvdisp/'
+        hvdisp_home = '/Users/songhuang/Dropbox/work/project/hs_sdssspec/'
+        data_home = '/Users/songhuang/Dropbox/work/project/hs_sdssspec/'
     endif else begin 
         ;; 
-        hvdisp_home = '/media/hs/Astro1/data/hvdisp/'
-        data_home   = '/media/hs/Astro1/data/hvdisp/'
+        hvdisp_home = '/media/hs/Astro2/hvdisp/'
+        data_home   = '/media/hs/Astro2/hvdisp/'
         ;;
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

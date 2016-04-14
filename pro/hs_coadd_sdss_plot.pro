@@ -57,6 +57,10 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
     ;; Check the file 
     sum_file = strcompress( sum_file, /remove_all ) 
     if NOT file_test( sum_file ) then begin 
+        sum_file = loc_coadd + sum_file 
+    endif 
+
+    if NOT file_test( sum_file ) then begin 
         print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
         print, ' Can not find the file : ' + sum_file + ' !!' 
         print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
@@ -279,10 +283,10 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
         /color, /helvetica, /bold, xsize=psxsize, ysize=psysize 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; position of the plot
-    position_0 = [ 0.08, 0.45, 0.99, 0.99 ] 
-    position_1 = [ 0.08, 0.33, 0.99, 0.45 ]
-    position_2 = [ 0.08, 0.21, 0.99, 0.33 ]
-    position_3 = [ 0.08, 0.09, 0.99, 0.21 ]
+    position_0 = [ 0.08, 0.45, 0.98, 0.99 ] 
+    position_1 = [ 0.08, 0.33, 0.98, 0.45 ]
+    position_2 = [ 0.08, 0.21, 0.98, 0.33 ]
+    position_3 = [ 0.08, 0.09, 0.98, 0.21 ]
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
