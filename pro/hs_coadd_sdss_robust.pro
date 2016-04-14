@@ -19,7 +19,7 @@
 ; AUTHOR:
 ;             Song Huang
 ; TODO: 
-;    1. Repeat the VWPCA to get error ?
+;    1. Repeat the hs_vwpca to get error ?
 ;
 ; HISTORY:
 ;             Song Huang, 2014/06/05 - First version 
@@ -32,8 +32,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 function hs_coadd_sdss_robust, prep_file, plot=plot, error=error, $
     niter=niter, nevec=nevec, save_fits=save_fits, $
-    blue_cut=blue_cut, red_cut=red_cut, hvdisp_home=hvdisp_home, $ 
-    n_repeat=n_repeat, test_str=test_str, $ 
+    blue_cut=blue_cut, red_cut=red_cut, $
+    hvdisp_home=hvdisp_home, data_home=data_home, $ 
+    n_repeat=n_repeat, test_str=test_str, noprefix_dir=noprefix_dir, $ 
     min_wave_hard=min_wave_hard, max_wave_hard=max_wave_hard
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -42,9 +43,26 @@ function hs_coadd_sdss_robust, prep_file, plot=plot, error=error, $
     endif else begin 
         hvdisp_home = strcompress( hvdisp_home, /remove_all ) 
     endelse
+    len_1 = strlen(hvdisp_home)
+    if strmid( hvdisp_home, ( len_1 - 1 ), len_1 ) NE '/' then begin 
+        hvdisp_home = hvdisp_home + '/'
+    endif 
+
+    if NOT keyword_set( data_dir ) then begin 
+        data_home = './'
+    endif else begin 
+        data_home = strcompress( data_dir, /remove_all )
+    endelse
+    len_2 = strlen(data_home)
+    if strmid( data_home, ( len_2 - 1 ), len_2 ) NE '/' then begin 
+        data_home = data_home + '/'
+    endif
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    loc_coadd    = hvdisp_home + 'coadd/'
     loc_indexlis = hvdisp_home + 'pro/lis/'
+    loc_coadd    = data_home + 'coadd/'
+    if NOT file_test(loc_coadd, /directory) then begin 
+        spawn, 'mkdir ' + loc_coadd
+    endif
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Wavelength cut at both blue and red end 
     if keyword_set( blue_cut ) then begin 
@@ -130,13 +148,14 @@ function hs_coadd_sdss_robust, prep_file, plot=plot, error=error, $
     ;; Prefix string for output and plot 
     temp = strsplit( prep_file, './', /extract ) 
     prefix = temp[ n_elements( temp ) - 2 ]
-    strreplace, prefix, '_prep', ''
-    loc_input = loc_coadd + prefix + '/' 
+    if keyword_set( noprefix_dir ) then begin 
+        loc_input = loc_coadd 
+    endif else begin 
+        strreplace, prefix, '_prep', ''
+        loc_input = loc_coadd + prefix + '/' 
+    endelse
     if ( dir_exist( loc_input ) NE 1 ) then begin 
-        print, ' XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
-        print, ' Can not find the directory for ' + prefix + ' !!!'
-        print, ' XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
-        message, ' '
+        spawn, 'mkdir ' + loc_input
     endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Name of the output file 
@@ -166,7 +185,7 @@ function hs_coadd_sdss_robust, prep_file, plot=plot, error=error, $
         params.nevec = 10
     endelse
     ;; Number of objects to use in initialisation of PCA
-    params.nobj_init = min( [ ( n_spec / 10.0 ), 200 ] ) < n_spec 
+    params.nobj_init = min( [ ceil( n_spec / 10.0 ), 200 ] ) < n_spec 
     ;; Control parameter for robustness (smaller=remove more outliers)
     params.delta = 0.5D 
     ;; Control parameter for convergence 
@@ -177,10 +196,10 @@ function hs_coadd_sdss_robust, prep_file, plot=plot, error=error, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Derive the mean spectra and PCA components using the Robust PCA method
     if keyword_set( error ) then begin
-        pca_evectors = vwpca( flux, 6, pca_vars, pca_pcs, pca_mean, pca_eval, $
+        pca_evectors = hs_vwpca( flux, 6, pca_vars, pca_pcs, pca_mean, pca_eval, $
             errarr=serr, params=params, /robust ) 
     endif else begin 
-        pca_evectors = vwpca( flux, 6, pca_vars, pca_pcs, pca_mean, pca_eval, $
+        pca_evectors = hs_vwpca( flux, 6, pca_vars, pca_pcs, pca_mean, pca_eval, $
             params=params, /robust ) 
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

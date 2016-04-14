@@ -120,15 +120,6 @@ if ( n_elements( temp) gt 1 ) then begin
 endif else begin 
     spec_name = spec_file 
 endelse
-;; Get the directory for the spectrum 
-if ( n_elements( temp ) GE 2 ) then begin 
-    loc_spec = '/' 
-    for m = 0, ( n_elements( temp ) - 2 ), 1 do begin 
-        loc_spec = loc_spec + temp[ m ] + '/' 
-    endfor 
-endif else begin 
-    loc_spec = ''
-endelse
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 temp = strsplit( spec_name, '.', /extract )
 spec_string = strcompress( temp[0], /remove_all )
@@ -273,12 +264,12 @@ max_rest = max( rest )
 coeff0 = alog10( double( wave[0] ) ) 
 coeff0_new = coeff0 - alog10( 1.0D + double( z ) )
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Convert the RA and DEC of the plug into Galactic coordinate: 
+glactc, ra_plug, dec_plug, 2000., gl_plug, gp_plug, 1, /deg
+;; Get the E(B-V) value for GL_PLUG and GP_PLUG 
+ebv = dust_getval( gl_plug, gp_plug, ipath=ipath, /interp, /pg10 ) 
 if keyword_set(no_extcorr) then begin
     ;; Correction of the Galactic extinction 
-    ;; Convert the RA and DEC of the plug into Galactic coordinate: 
-    glactc, ra_plug, dec_plug, 2000., gl_plug, gp_plug, 1, /deg
-    ;; Get the E(B-V) value for GL_PLUG and GP_PLUG 
-    ebv = dust_getval( gl_plug, gp_plug, ipath=ipath, /interp, /pg10 ) 
     ;; A(V) = E(B-V) * R(V)
     R_v = 3.1 
     ;; Use the extinction curve from CCM(1989) or O'Donnel(1994)
@@ -338,7 +329,6 @@ endif
 ;; First save a binary table containing all the information: 
 ;; llam; wave; rest; flux; flux_deredden; ivar; sigma; mask; mask_bad; 
 ;; mask_sky; mask_all; skye; sky_obj_ratio 
-new_file = loc_spec + spec_string + '_' + suffix + '.fits' 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 header_new = strarr( 19 ) 
 header_new[0] = 'SIMPLE  =                    T /Primary Header'
@@ -394,6 +384,9 @@ spec_output[ *, 8 ] = mask_sky
 spec_output[ *, 9 ] = wdsp
 spec_output[ *, 10] = wave
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+new_suffix = '_' + suffix + '.fits' 
+new_file = spec_file
+strreplace, new_file, '.fits', new_suffix
 mwrfits, spec_output, new_file, header_new, /create, /silent 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -408,7 +401,8 @@ mwrfits, spec_output, new_file, header_new, /create, /silent
 ;; to see if ULyss can work properly
 if keyword_set( save_ulyss ) then begin 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    uly_file = loc_spec + spec_string + '_uly.fits'
+    uly_file = spec_file
+    strreplace, uly_file, '.fits', '_uly.fits'
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     header_uly = strarr( 12 ) 
     header_uly[0] = 'SIMPLE  =                    T /Primary Header'
@@ -448,8 +442,10 @@ endif
 ;; See: http://pendientedemigracion.ucm.es/info/Astrof/software/indexf/
 if keyword_set( save_indexf ) then begin 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    indexf_file_1 = loc_spec + spec_string + '_ind.fits'
-    indexf_file_2 = loc_spec + spec_string + '_ind_err.fits'
+    indexf_file_1 = spec_file
+    indexf_file_2 = spec_file
+    strreplace, indexf_file_1, '.fits', '_ind.fits'
+    strreplace, indexf_file_2, '.fits', '_ind_err.fits'
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     header_ind = strarr( 11 ) 
     header_ind[0] = 'SIMPLE  =                    T /Primary Header'
@@ -482,7 +478,8 @@ endif
 ;;  step; For the mask, any value greater than 0 will be considered as bad 
 if keyword_set( save_sl ) then begin 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    sl_file = loc_spec + spec_string + '_sl.txt' 
+    sl_file = spec_file
+    strreplace, sl_file, '.fits', '_sl.txt'
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     index_nan_1 = where( flux_inter  EQ !VALUES.F_NAN )
     index_nan_2 = where( sigma_inter EQ !VALUES.F_NAN )
@@ -520,7 +517,8 @@ endif
 ;;      /plot, spec_exten=1, spec_nslice=0, err_nslice=1, /pix
 if keyword_set( save_ez ) then begin 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ez_file = loc_spec + spec_string + '_ez.fits' 
+    ez_file = spec_file
+    strreplace, ez_file, '.fits', '_ez.fits'
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     lickew_output = fltarr( n_pixels )
     lickew_output[ * ] = rest

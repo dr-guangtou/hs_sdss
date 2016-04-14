@@ -21,10 +21,12 @@
 ;------------------------------------------------------------------------------
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-pro hs_coadd_sdss_prep, list_file, hvdisp_home=hvdisp_home, $
+pro hs_coadd_sdss_prep, list_file, suffix=suffix, $
+    hvdisp_home=hvdisp_home, data_home=data_home, $
     norm0=norm0, norm1=norm1, csigma=csigma, output=output, $
     mask_all=mask_all, add_random=add_random, $
-    debug=debug, quiet=quiet, sky_factor=sky_factor, f_cushion=f_cushion 
+    debug=debug, quiet=quiet, sky_factor=sky_factor, $
+    f_cushion=f_cushion, plate_dir=plate_dir
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 on_error, 2
@@ -66,16 +68,35 @@ if keyword_set( f_cushion ) then begin
 endif else begin 
     f_cushion = 4.0 
 endelse
+
+if keyword_set( suffix ) then begin 
+    suffix = strcompress( suffix, /remove_all )
+endif else begin 
+    suffix = 'hs'
+endelse
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Location of the _hs.fits files 
-if keyword_set( hvdisp_home ) then begin 
+if NOT keyword_set( hvdisp_home ) then begin 
     hvdisp_location, hvdisp_home, data_home
 endif else begin 
-    hvdisp_home = '/media/hs/Astro1/data/hvdisp/spec/'
-    data_home   = '/media/hs/Astro1/data/hvdisp/spec/'
+    hvdisp_home = strcompress( hvdisp_home, /remove_all ) 
 endelse
+len_1 = strlen(hvdisp_home)
+if strmid( hvdisp_home, ( len_1 - 1 ), len_1 ) NE '/' then begin 
+    hvdisp_home = hvdisp_home + '/'
+endif 
+
+if NOT keyword_set( data_home ) then begin 
+    data_home = './'
+endif else begin 
+    data_home = strcompress( data_home, /remove_all )
+endelse
+len_2 = strlen(data_home)
+if strmid( data_home, ( len_2 - 1 ), len_2 ) NE '/' then begin 
+    data_home = data_home + '/'
+endif
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -112,12 +133,16 @@ veldisp_arr  = fltarr( n_spec )
 for ii = 0L, ( n_spec - 1 ), 1 do begin 
     ;; 
     temp = strsplit( list_temp[ ii ], '/.', /extract )
-    spec_name = temp[ n_elements( temp ) - 2 ] + '_hs.fits'
+    spec_name = temp[ n_elements( temp ) - 2 ] + '_' + suffix + '.fits'
     list_spec[ ii ] = spec_name 
     ;; 
     temp = strsplit( spec_name, '.-', /extract ) 
     plate_str = strcompress( string( long( temp[ 1 ] ) ), /remove_all )
-    spec_hs = data_home + plate_str + '/' + spec_name 
+    if keyword_set( plate_dir ) then begin
+        spec_hs = data_home + plate_str + '/' + spec_name 
+    endif else begin
+        spec_hs = data_home + spec_name 
+    endelse
     list_loca[ ii ] = spec_hs
     ;;
     if NOT file_test( spec_hs ) then begin 

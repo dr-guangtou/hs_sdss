@@ -22,8 +22,9 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 function hs_coadd_sdss_median, prep_file, n_boot=n_boot, $
-    hvdisp_home=hvdisp_home, plot=plot, save_fits=save_fits, save_all=save_all, $
-    sig_cut=sig_cut, test_str=test_str
+    hvdisp_home=hvdisp_home, data_dir=data_dir, $
+    plot=plot, save_fits=save_fits, save_all=save_all, $
+    sig_cut=sig_cut, test_str=test_str, noprefix_dir=noprefix_dir
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if NOT keyword_set( hvdisp_home ) then begin 
@@ -31,9 +32,26 @@ function hs_coadd_sdss_median, prep_file, n_boot=n_boot, $
     endif else begin 
         hvdisp_home = strcompress( hvdisp_home, /remove_all ) 
     endelse
+    len_1 = strlen(hvdisp_home)
+    if strmid( hvdisp_home, ( len_1 - 1 ), len_1 ) NE '/' then begin 
+        hvdisp_home = hvdisp_home + '/'
+    endif 
+
+    if NOT keyword_set( data_dir ) then begin 
+        data_home = './'
+    endif else begin 
+        data_home = strcompress( data_dir, /remove_all )
+    endelse
+    len_2 = strlen(data_home)
+    if strmid( data_home, ( len_2 - 1 ), len_2 ) NE '/' then begin 
+        data_home = data_home + '/'
+    endif
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    loc_coadd    = hvdisp_home + 'coadd/'
     loc_indexlis = hvdisp_home + 'pro/lis/'
+    loc_coadd    = data_home + 'coadd/'
+    if NOT file_test(loc_coadd, /directory) then begin 
+        spawn, 'mkdir ' + loc_coadd
+    endif
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; check the input file 
     prep_file = strcompress( prep_file, /remove_all ) 
@@ -71,13 +89,14 @@ function hs_coadd_sdss_median, prep_file, n_boot=n_boot, $
     ;; Prefix string for output and plot 
     temp = strsplit( prep_file, './', /extract ) 
     prefix = temp[ n_elements( temp ) - 2 ]
-    strreplace, prefix, '_prep', ''
-    loc_input = loc_coadd + prefix + '/' 
+    if keyword_set( noprefix_dir ) then begin 
+        loc_input = loc_coadd 
+    endif else begin 
+        strreplace, prefix, '_prep', ''
+        loc_input = loc_coadd + prefix + '/' 
+    endelse
     if ( dir_exist( loc_input ) NE 1 ) then begin 
-        print, ' XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
-        print, ' Can not find the directory for ' + prefix + ' !!!'
-        print, ' XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
-        message, ' '
+        spawn, 'mkdir ' + loc_input
     endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Name of the output file 

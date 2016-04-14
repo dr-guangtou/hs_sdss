@@ -22,7 +22,8 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
-    hvdisp_home=hvdisp_home, avg_boot=avg_boot, test_str=test_str 
+    hvdisp_home=hvdisp_home, data_dir=data_dir, $
+    avg_boot=avg_boot, test_str=test_str 
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if NOT keyword_set( hvdisp_home ) then begin 
@@ -30,6 +31,20 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
     endif else begin 
         hvdisp_home = strcompress( hvdisp_home, /remove_all ) 
     endelse
+    len_1 = strlen(hvdisp_home)
+    if strmid( hvdisp_home, ( len_1 - 1 ), len_1 ) NE '/' then begin 
+        hvdisp_home = hvdisp_home + '/'
+    endif 
+
+    if NOT keyword_set( data_dir ) then begin 
+        data_home = './'
+    endif else begin 
+        data_home = strcompress( data_dir, /remove_all )
+    endelse
+    len_2 = strlen(data_home)
+    if strmid( data_home, ( len_2 - 1 ), len_2 ) NE '/' then begin 
+        data_home = data_home + '/'
+    endif
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if NOT keyword_set( prefix ) then begin 
         tmp = strsplit( sum_file, './', /extract ) 
@@ -42,15 +57,11 @@ pro hs_coadd_sdss_plot, sum_file, index_list=index_list, prefix=prefix, $
         prefix = strcompress( prefix, /remove_all ) 
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    loc_coadd = hvdisp_home + 'coadd/' + prefix + '/'
-    if NOT dir_exist( loc_coadd ) then begin 
-        print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
-        print, ' Can not find the directory : ' + loc_coadd + ' !!'  
-        print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
-        message, ' '
-    endif 
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     loc_indexlis = hvdisp_home + 'pro/lis/'
+    loc_coadd    = data_home + 'coadd/'
+    if NOT file_test(loc_coadd, /directory) then begin 
+        spawn, 'mkdir ' + loc_coadd
+    endif
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

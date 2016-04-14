@@ -23,7 +23,8 @@
 ;------------------------------------------------------------------------------
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-pro hs_coadd_sdss_pipe, html_list, hvdisp_home=hvdisp_home, $
+pro hs_coadd_sdss_pipe, html_list, $
+    hvdisp_home=hvdisp_home, data_home=data_home, $
     create=create, post=post, avg_boot=avg_boot, $
     csigma=csigma, n_boot=n_boot, sig_cut=sig_cut, $
     blue_cut=blue_cut, red_cut=red_cut, niter=niter, nevec=nevec, $ 
@@ -104,6 +105,20 @@ pro hs_coadd_sdss_pipe, html_list, hvdisp_home=hvdisp_home, $
     endif else begin 
         hvdisp_home = strcompress( hvdisp_home, /remove_all ) 
     endelse
+    len_1 = strlen(hvdisp_home)
+    if strmid( hvdisp_home, ( len_1 - 1 ), len_1 ) NE '/' then begin 
+        hvdisp_home = hvdisp_home + '/'
+    endif 
+
+    if NOT keyword_set( data_home ) then begin 
+        data_home = './'
+    endif else begin 
+        data_home = strcompress( data_home, /remove_all )
+    endelse
+    len_2 = strlen(data_home)
+    if strmid( data_home, ( len_2 - 1 ), len_2 ) NE '/' then begin 
+        data_home = data_home + '/'
+    endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     loc_coadd    = hvdisp_home + 'coadd/'
     loc_indexlis = hvdisp_home + 'pro/lis/'
@@ -138,14 +153,15 @@ pro hs_coadd_sdss_pipe, html_list, hvdisp_home=hvdisp_home, $
         print, '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
         print, '   Will try to generate it .... ' 
         ;;
-        hs_coadd_sdss_prep, html_file, csigma=350.0, output=prep_file, $
-            /mask_all, /quiet, sky_factor=sky_factor, f_cushion=f_cushion 
+        hs_coadd_sdss_prep, html_file, csigma=csigma, output=prep_file, $
+            /mask_all, /quiet, sky_factor=sky_factor, f_cushion=f_cushion, $
+            /plate_dir
     endif else begin 
         if keyword_set( new_prep ) then begin 
             print, '   Will generate a new prep.fits file .... '
-            hs_coadd_sdss_prep, html_file, csigma=350.0, output=prep_file, $
+            hs_coadd_sdss_prep, html_file, csigma=csigma, output=prep_file, $
                 /mask_all, /quiet, sky_factor=sky_factor, $
-                f_cushion=f_cushion 
+                f_cushion=f_cushion, /plate_dir 
         endif 
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
