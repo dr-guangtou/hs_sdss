@@ -137,7 +137,7 @@ pro hs_stack_sdss_simple, list_file, $
         if (NOT file_test( spec_prep)) OR keyword_set( new_prep ) then begin 
             ;; In case you don't want to use Galactic extinction correction 
             ;;   change /ccm to /no_extcorr
-            hs_sdss_prep_spec, spec_file, /quiet, /ccm, /save_sl, $
+            hs_sdss_prep_spec, spec_file, /quiet, /no_extcorr, /save_sl, $
                 suffix=suffix, ipath=ipath
         endif 
     endfor 
@@ -281,10 +281,10 @@ pro hs_stack_sdss_simple, list_file, $
     index_list = 'hs_index_plot.lis' 
     if keyword_set( avg_boot ) then begin
         hs_coadd_sdss_plot, sum_file, index_list=index_list, $
-            prefix=prefix, /avg_boot
+            prefix=prefix, /avg_boot, hvdisp_home=hvdisp_home, data_dir=data_dir
     endif else begin 
         hs_coadd_sdss_plot, sum_file, index_list=index_list, $
-            prefix=prefix
+            prefix=prefix, hvdisp_home=hvdisp_home, data_dir=data_dir
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
