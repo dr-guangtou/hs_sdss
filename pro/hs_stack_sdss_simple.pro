@@ -19,7 +19,7 @@ pro hs_stack_sdss_simple, list_file, $
     if keyword_set( n_boot ) then begin 
         n_boot = long( n_boot ) 
     endif else begin 
-        n_boot  = 200
+        n_boot  = 500
     endelse
     if keyword_set( sig_cut ) then begin 
         sig_cut = float( sig_cut ) 
