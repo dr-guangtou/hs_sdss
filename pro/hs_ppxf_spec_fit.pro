@@ -25,7 +25,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 pro hs_setup_ssp_library, base_file, velscale, fwhm_data, fwhm_libr, $ 
     stellar_templates, wave_range_temp, wave_log_temp, base_struc, $ 
-    lib_location=lib_location, n_models=n_models, quiet=quiet, $
+    dir_ssplib=dir_ssplib, n_models=n_models, quiet=quiet, $
     min_temp=min_temp, max_temp=max_temp 
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -35,10 +35,10 @@ pro hs_setup_ssp_library, base_file, velscale, fwhm_data, fwhm_libr, $
     ;; Get the location for the stellar population bases  
     ;; Use the stellar population base file from STARLIGHT, so only TXT model 
     ;; spectra are allowed at this point
-    if keyword_set( lib_location ) then begin 
-        lib_location = strcompress( lib_location, /remove_all ) 
+    if keyword_set( dir_ssplib ) then begin 
+        dir_ssplib = strcompress( dir_ssplib, /remove_all ) 
     endif else begin 
-        lib_location = 'base/'
+        dir_ssplib = 'base/'
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Resolution of the data
@@ -58,7 +58,7 @@ pro hs_setup_ssp_library, base_file, velscale, fwhm_data, fwhm_libr, $
     endif else begin 
         ;; Read the information of the base file into a structure
         base_struc = hs_starlight_read_base( base_file, $
-            lib_location=lib_location )
+            dir_ssplib=dir_ssplib )
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Name of the spectral models
@@ -208,11 +208,12 @@ end
 pro hs_ppxf_spec_fit, spec_file, base_file, $
     fwhm_data=fwhm_data, fwhm_libr=fwhm_libr, $
     min_wave=min_wave,   max_wave=max_wave, $
-    data_home=data_home, lib_location=lib_location,$ 
+    hvdisp_home=hvdip_home, dir_result=dir_result, dir_base=dir_base, $ 
+    data_home=data_home, dir_ssplib=dir_ssplib,$ 
     vel_guess=vel_guess,     sig_guess=sig_guess, $
     sn_ratio=sn_ratio, mdegree=mdegree, n_moments=n_moments, $
     quiet=quiet, debug=debug, suffix=suffix, $
-    save_temp=save_temp, result_file=result_file, $
+    save_template=save_template, result_file=result_file, $
     plot_result=plot_result, save_result=save_result, $
     include_emission=include_emission, mask_file=mask_file, $ 
     regul=regul, error_reg=error_reg, $
@@ -262,20 +263,33 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; Check all the necessary directories.
+    if NOT keyword_set( hvdisp_home ) then begin 
+        hvdisp_location, hvdisp_home, data_temp
+    endif else begin 
+        hvdisp_home = strcompress( hvdisp_home, /remove_all ) 
+    endelse
+
     if NOT keyword_set( data_home ) then begin 
-        data_home   = '' 
-        loc_result  = ''
-        loc_base    = ''
+        data_home   = './' 
     endif else begin 
         data_home = strcompress( data_home, /remove_all ) 
-        loc_result  = data_home + 'coadd/results/ppxf/'
-        loc_base    = data_home + 'pro/ancil/'
     endelse
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    if NOT keyword_set( lib_location ) then begin 
-        lib_location = data_home + 'base/' 
+
+    if NOT keyword_set( dir_result ) then begin 
+        dir_result = data_home + 'coadd/results/ppxf/'
     endif else begin 
-        lib_location = strcompress( lib_location, /remove_all ) 
+        dir_result = strcompress( dir_result, /remove_all ) 
+    endelse 
+
+    if NOT file_test( dir_result ) then begin 
+        spawn, 'mkdir -p ' + dir_result 
+    endif
+
+    if NOT keyword_set( dir_ssplib ) then begin 
+        dir_ssplib = data_home + 'base/' 
+    endif else begin 
+        dir_ssplib = strcompress( dir_ssplib, /remove_all ) 
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -292,8 +306,14 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Check the stellar population base file 
     base_file = strcompress( base_file, /remove_all )
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    if NOT file_test( loc_base + base_file ) then begin 
+    if NOT keyword_set( dir_base ) then begin 
+        dir_base = hvdisp_home + 'pro/ancil/'
+    endif else begin 
+        dir_base = strcompress( dir_base, /remove_all )
+    endelse 
+    print, "!!! " + dir_base
+
+    if NOT file_test( dir_base + base_file ) then begin 
         print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
         print, ' Can not find the base file : ' + base_file + ' !!!' 
         print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
@@ -460,12 +480,12 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
         print, '  Use the stellar population models from ' + base_file + ' !' 
     endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    base_file = loc_base + strcompress( base_file, /remove_all ) 
+    base_file = dir_base + strcompress( base_file, /remove_all ) 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     hs_setup_ssp_library, base_file, velscale, fwhm_data, fwhm_libr, $
         stellar_templates, wave_range_temp, wave_log_temp, base_struc, $
         n_models=n_models, min_temp=min_wave_temp, max_temp=max_wave_temp, $
-        /quiet, lib_location=lib_location
+        /quiet, dir_ssplib=dir_ssplib
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     wave_lin_temp = exp( wave_log_temp )
     n_pixel_temp  = n_elements( wave_lin_temp )
@@ -654,13 +674,13 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
         hs_ppxf, templates, galaxy, noise, velscale, start, solutions, $
             goodpixels=goodpixels, moments=moments, degree=-1, $
             mdegree=mdegree, vsyst=dv,  weights=weights, temp_arr=temp_arr, $
-            regul=( 1.0D / error_reg ), reg_dim=reg_dim, $ 
+            regul=( 1.0D / error_reg ), reg_dim=reg_dim, matrix=matrix, $ 
             component=component, bestfit=bestfit, /quiet
     endif else begin 
         hs_ppxf, templates, galaxy, noise, velscale, start, solutions, $
             goodpixels=goodpixels, moments=moments, degree=-1, $
             mdegree=mdegree, vsyst=dv, weights=weights, temp_arr=temp_arr, $
-            component=component, bestfit=bestfit, /quiet
+            matrix=matrix, component=component, bestfit=bestfit, /quiet
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if ~keyword_set( quiet ) then begin 
@@ -722,9 +742,9 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         if keyword_set( result_file ) then begin 
-            result_file = loc_result + result_file 
+            result_file = dir_result + result_file 
         endif else begin 
-            result_file = loc_result + name_str + '_ppxf.fits'
+            result_file = dir_result + name_str + '_ppxf.fits'
         endelse
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         print, '###############################################################'
@@ -777,12 +797,14 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;; First extension is the structure for main result  
         mwrfits, spec_result, result_file, /create    ;; dimension 0  
+        ;; Second extension is whole solution 
+        mwrfits, solutions, result_file, /silent    ;; extension 1
+        ;; Third extension is the MATRIX output from ppXF
+        mwrfits, matrix, result_file, /silent       ;; extension 3
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        if keyword_set( save_temp ) then begin 
-            ;; Second extension for whole solutions 
-            mwrfits, solutions, result_file, /silent    ;; extension 1
-            ;; Third extension for the templates
-            mwrfits, templates, result_file, /silent    ;; extension 2
+        if keyword_set( save_template ) then begin 
+            ;; Fourth extension for all the templates
+            mwrfits, templates, result_file, /silent    ;; extension 4
         endif 
         print, '###############################################################'
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -796,7 +818,7 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
     if keyword_set( debug ) then begin 
 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        result_plot = loc_result + name_str + '_ppxf.eps' 
+        result_plot = dir_result + name_str + '_ppxf.eps' 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         if keyword_set( include_emission ) then begin 
             res_range = [ min( absres ), ( max( absres ) > max( best_gas ) ) ]
@@ -928,7 +950,7 @@ pro test_fit
 ;    vel_guess=vel_guess,     sig_guess=sig_guess, $
 ;    sn_ratio=sn_ratio, mdegree=mdegree, n_moments=n_moments, $
 ;    quiet=quiet, debug=debug, suffix=suffix, $
-;    save_temp=save_temp, result_file=result_file, $
+;    save_template=save_template, result_file=result_file, $
 ;    plot_result=plot_result, save_result=save_result, $
 ;    include_emission=include_emission, mask_file=mask_file, $ 
 ;    regul=regul, error_reg=error_reg, $

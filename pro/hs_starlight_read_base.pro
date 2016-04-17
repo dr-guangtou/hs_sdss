@@ -20,13 +20,13 @@
 ;------------------------------------------------------------------------------
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-function hs_starlight_read_base, base_file, lib_location=lib_location
+function hs_starlight_read_base, base_file, dir_ssplib=dir_ssplib
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    if keyword_set( lib_location ) then begin 
-        lib_location = strcompress( lib_location, /remove_all ) 
+    if keyword_set( dir_ssplib ) then begin 
+        dir_ssplib = strcompress( dir_ssplib, /remove_all ) 
     endif else begin 
-        lib_location = '' 
+        dir_ssplib = '' 
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     base_file = strcompress( base_file, /remove_all ) 
@@ -50,7 +50,7 @@ function hs_starlight_read_base, base_file, lib_location=lib_location
         ;; Make the mask 
         for ii = 0, ( n_ssp - 1 ), 1 do begin 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-            base_struc[ ii ].file    = lib_location + ssp_file[ ii ]
+            base_struc[ ii ].file    = dir_ssplib + ssp_file[ ii ]
             base_struc[ ii ].age     = ssp_age[ ii ]
             base_struc[ ii ].log_age = alog10( ssp_age[ ii ] )
             base_struc[ ii ].metal   = ssp_metal[ ii ]

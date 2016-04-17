@@ -26,21 +26,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 pro hs_setup_ssp_library, temp_list, velscale, fwhm_data, fwhm_libr, $ 
     stellar_templates, wave_range_temp, wave_log_temp, $ 
-    lib_location=lib_location, n_models=n_models, quiet=quiet, $
+    dir_ssplib=dir_ssplib, n_models=n_models, quiet=quiet, $
     min_temp=min_temp, max_temp=max_temp, ssp_txt=ssp_txt
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     on_error, 2
     compile_opt idl2
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    if keyword_set( lib_location ) then begin 
-        lib_location = strcompress( lib_location, /remove_all ) 
+    if keyword_set( dir_ssplib ) then begin 
+        dir_ssplib = strcompress( dir_ssplib, /remove_all ) 
     endif else begin 
         hvdisp_location, hvdisp_home, data_home
         if keyword_set( ssp_txt ) then begin 
-            lib_location = data_home + 'lib/base/'
+            dir_ssplib = data_home + 'lib/base/'
         endif else begin 
-            lib_location = data_home + 'lib/miuscat/'
+            dir_ssplib = data_home + 'lib/miuscat/'
         endelse
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -60,7 +60,7 @@ pro hs_setup_ssp_library, temp_list, velscale, fwhm_data, fwhm_libr, $
         temp_files = strarr( n_models ) 
         readcol, temp_list, temp_files, format='A', comment='#', delimiter=' ', $
             /silent 
-        spec_models = lib_location + strcompress( temp_files, /remove_all )
+        spec_models = dir_ssplib + strcompress( temp_files, /remove_all )
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Read in the first one for wavelength range 

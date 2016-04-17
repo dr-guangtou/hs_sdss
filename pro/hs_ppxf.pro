@@ -1,6 +1,6 @@
 ;#############################################################################
 ;
-; Copyright (C) 2001-2015, Michele Cappellari
+; Copyright (C) 2001-2016, Michele Cappellari
 ; E-mail: cappellari_at_astro.ox.ac.uk
 ;
 ; Updated versions of the software are available from my web page
@@ -47,13 +47,13 @@
 ;      where the sky dominates the observed spectrum and an accurate
 ;      sky subtraction is critical.
 ;   8) One can derive an estimate of the reddening in the spectrum.
-;   9) The covariance matrix can be input instead of the error spectrum, 
+;   9) The covariance matrix can be input instead of the error spectrum,
 ;      to account for correlated errors in the spectral pixels.
 ;
 ; CALLING SEQUENCE:
 ;   PPXF, templates, galaxy, noise, velScale, start, sol, $
 ;       BESTFIT=bestFit, BIAS=bias, CHI2DOF=chi2dof, /CLEAN, COMPONENT=component, $
-;       DEGREE=degree, ERROR=error, GOODPIXELS=goodPixels, LAMBDA=lambda, $
+;       DEGREE=degree, ERROR=error, GOODPIXELS=goodPixels, LAMBDA=lambda, MATRIX=matrix, $
 ;       MDEGREE=mdegree, MOMENTS=moments, MPOLYWEIGHTS=mpolyweights, /OVERSAMPLE, $
 ;       /PLOT, POLYWEIGHTS=polyWeights, /QUIET, REDDENING=reddening, REGUL=regul, $
 ;       REG_DIM=reg_dim, SKY=sky, VSYST=vsyst, WEIGHTS=weights
@@ -73,7 +73,7 @@
 ;       This can be useful to try to attach a physical meaning to the output WEIGHTS, in
 ;       term of the galaxy star formation history and chmemical composition distribution.
 ;       In that case the templates may represent single stellar population SSP models
-;       and should be arranged in sequence of increasing age, metallicity or alpha along 
+;       and should be arranged in sequence of increasing age, metallicity or alpha along
 ;       the second, third or fourth dimension of the array respectively.
 ;     - TEMPLATES and GALAXY do not need to span the same wavelength range. However
 ;       an error will be returned by PPXF, if the velocity shift in pixels,
@@ -152,11 +152,11 @@
 ;       the template continuum shape during the fit (default: 4).
 ;       Set DEGREE = -1 not to include any additive polynomial.
 ;   ERROR: a named variable that will contain a vector of *formal* errors
-;       (1*sigma) for the fitted parameters in the output vector SOL. This 
-;       option can be used when speed is essential, to obtain an order of 
-;       magnitude estimate of the uncertainties, but we *strongly* recommend to 
-;       run Monte Carlo simulations to obtain more reliable errors. In fact these 
-;       errors can be severely underestimated in the region where the penalty 
+;       (1*sigma) for the fitted parameters in the output vector SOL. This
+;       option can be used when speed is essential, to obtain an order of
+;       magnitude estimate of the uncertainties, but we *strongly* recommend to
+;       run Monte Carlo simulations to obtain more reliable errors. In fact these
+;       errors can be severely underestimated in the region where the penalty
 ;       effect is most important (sigma < 2*velScale).
 ;     - These errors are meaningless unless Chi^2/DOF~1 (see parameter SOL below).
 ;       However if one *assume* that the fit is good, a corrected estimate of the
@@ -175,6 +175,13 @@
 ;       If one uses my LOG_REBIN routine to rebin the spectrum before the PPXF fit:
 ;           LOG_REBIN, lamRange, galaxy, galaxyNew, logLam
 ;       the wavelength can be obtained as lambda = EXP(logLam).
+;   MATRIX: Design matrix[nPixels, DEGREE+nTemplates] of the linear system.
+;     - matrix[nPixels, 0:DEGREE-1] contains the additive polynomials if DEGREE >= 0.
+;     - matrix[nPixels, DEGREE:*] contains the templates convolved by the LOSVD
+;       and multiplied by the multiplicative polynomials if MDEGREE > 0.
+;     - matrix[nPixels, -nGas:*] contains the nGas emission line templates if
+;       given. In the latter case the best fitting gas emission line spectrum is
+;           lines = matrix[*, -nGas:*] # weights[-nGas:*]
 ;   MDEGREE: degree of the *multiplicative* Legendre polynomial (with mean of 1)
 ;       used to correct the continuum shape during the fit (default: 0). The
 ;       zero degree multiplicative polynomial is always included in the fit as
@@ -188,14 +195,23 @@
 ;       the G-H moments are fitted (nonlinearly) *together* with [V,sigma].
 ;     - If MOMENTS=2 or MOMENTS is not set then only [V,sigma] are
 ;       fitted and the other parameters are returned as zero.
-;     - If MOMENTS=0 then only the templates and the continuum additive
-;       polynomials are fitted and the WEIGHTS are returned in output.
+;     - If MOMENTS is negative then the kinematics of the given COMPONENT are
+;       kept fixed to the input values.
+;     - EXAMPLE: We want to keep fixed component 0, which has an LOSVD described
+;       by [V, sigma, h3, h4] and is modelled with 100 spectral templates;
+;       At the same time we fit [V, sigma] for COMPONENT=1, which is described
+;       by 5 templates (this situation may arise when fitting stellar templates
+;       with pre-determined stellar kinematics, while fitting the gas emission).
+;       We should give in input to PPXF the following parameters:
+;           COMPONENT = [replicate(0, 100), replicate(1, 5)]
+;           MOMENTS = [-4, 2]  ; moments to fit for component 0 and 1 respectively
+;           START = [[V, sigma, h3, h4], [V, sigma, 0, 0]]
 ;   /OVERSAMPLE: Set this keyword to oversample the template by a factor 30x
 ;       before convolving it with a well sampled LOSVD. This can be useful to
-;       extract proper velocities, even when sigma < 0.7*velScale and the 
-;       dispersion information becomes totally unreliable due to undersampling. 
-;       IMPORTANT: One should sample the spectrum more finely is possible, 
-;       before resorting to the use of this keyword! 
+;       extract proper velocities, even when sigma < 0.7*velScale and the
+;       dispersion information becomes totally unreliable due to undersampling.
+;       IMPORTANT: One should sample the spectrum more finely, if possible,
+;       before resorting to the use of this keyword!
 ;   /PLOT: set this keyword to plot the best fitting solution and the residuals
 ;       at the end of the fit.
 ;   POLYWEIGHTS: vector with the weights of the additive Legendre polynomials.
@@ -223,17 +239,17 @@
 ;       Large REGUL values correspond to smoother WEIGHTS output. The WEIGHTS tend
 ;       to a linear trend for large REGUL. When this keyword is nonzero the solution
 ;       will be a trade-off between smoothness of WEIGHTS and goodness of fit.
-;     - The effect of the regularization scheme is to enforce the numerical second 
-;       derivatives between neighbouring weights (in every dimension) to be equal 
-;       to -w[j-1]+2*w[j]-w[j+1]=0 with an error Delta=1/REGUL. It may be helpful 
+;     - The effect of the regularization scheme is to enforce the numerical second
+;       derivatives between neighbouring weights (in every dimension) to be equal
+;       to -w[j-1]+2*w[j]-w[j+1]=0 with an error Delta=1/REGUL. It may be helpful
 ;       to define REGUL=1/Delta and view Delta as the regularization error.
-;     - IMPORTANT: Delta needs to be smaller but of the same order of magnitude 
-;       of the typical WEIGHTS to play an effect on the regularization. 
-;       One way to achieve this is: 
-;           (i) Divide the TEMPLATES array by a scalar in such a way that the typical 
-;               template has a median of one (e.g. TEMPLATES/=median(TEMPLATES)); 
-;          (ii) Do the same for the input GALAXY spectrum (e.g. GALAXY/=median(GALAXY)). 
-;               In this situation a sensible guess for Delta will be a few percent.  
+;     - IMPORTANT: Delta needs to be smaller but of the same order of magnitude
+;       of the typical WEIGHTS to play an effect on the regularization.
+;       One way to achieve this is:
+;           (i) Divide the TEMPLATES array by a scalar in such a way that the typical
+;               template has a median of one (e.g. TEMPLATES/=median(TEMPLATES));
+;          (ii) Do the same for the input GALAXY spectrum (e.g. GALAXY/=median(GALAXY)).
+;               In this situation a sensible guess for Delta will be a few percent.
 ;     - Here is a possible recipe for chosing the regularization parameter REGUL:
 ;          (i) Perform an un-regularized fit (REGUL=0) and then rescale the input
 ;              NOISE spectrum so that Chi^2/DOF = Chi^2/N_ELEMENTS(goodPixels) = 1.
@@ -283,28 +299,41 @@
 ;
 ; OUTPUT PARAMETER:
 ;   SOL: seven elements vector containing in output the values of
-;       [Vel,Sigma,h3,h4,h5,h6,Chi^2/DOF] of the best fitting solution, where DOF
+;       [Vel, Sigma, h3, h4, h5, h6, Chi^2/DOF] of the best fitting solution, where DOF
 ;       is the number of Degrees of Freedom (number of fitted spectral pixels).
-;     - When fitting multiple kinematic COMPONENT, sol[6,ncomp] contains the solution
-;       for all different components, one after the other, sorted by COMPONENT.       
+;     - When fitting multiple kinematic COMPONENT, sol[6, ncomp] contains the solution
+;       for all different components, one after the other, sorted by COMPONENT.
 ;     - Vel is the velocity, Sigma is the velocity dispersion, h3-h6 are the
 ;       Gauss-Hermite coefficients. The model parameter are fitted simultaneously.
+;     - IMPORTANT: pPXF does not directly measure velocities, instead it measures
+;       shifts in spectral pixels. Given that the spectral pixels are equally spaced
+;       in logarithmic units, this implies that pPXF measures shifts of np.log(lam).
+;       As one is generally interested in velocities in km/s, Vel is 
+;       *defined* in pPXF by Vel = c*alog(lam_obs/lam_0), which reduces
+;       to the well known Doppler formula Vel = c*dLam/lam_0 for small dLam.
+;       In this way pPXF returns meaningful velocities for nearby galaxies,
+;       or when a spectrum was de-redshifted before extracting the kinematics.
+;       However Vel is not a well-defined quantity at large redshifts and one
+;       should transform it into redshift for meaninful results. 
+;       Given the above definition, the precise relation between the output pPXF 
+;       velocity and redshift is Vel = c*alog(1 + z), which reduces to the well 
+;       known approximation z ~ Vel/c in the limit of small Vel.
 ;     - I hardcoded the following safety limits on the fitting parameters:
 ;         a) Vel is constrained to be +/-2000 km/s from the first input guess
 ;         b) velScale/10 < Sigma < 1000 km/s
-;         c) -0.3 < [h3,h4,...] < 0.3 (limits are extreme value for real galaxies)
+;         c) -0.3 < [h3, h4, ...] < 0.3 (limits are extreme value for real galaxies)
 ;     - In the case of two-sided LOSVD fitting the output values refer
 ;       to the first input galaxy spectrum, while the second spectrum will
-;       have by construction kinematics parameters [-Vel,Sigma,-h3,h4,-h5,h6].
+;       have by construction kinematics parameters [-Vel, Sigma, -h3, h4, -h5, h6].
 ;       If VSYST is nonzero (as required for two-sided fitting), then the
 ;       output velocity is measured with respect to VSIST.
 ;     - IMPORTANT: if Chi^2/DOF is not ~1 it means that the errors are not
 ;       properly estimated, or that the template is bad and it is *not* safe
 ;       to set the /CLEAN keyword.
 ;     - When MDEGREE > 0 then SOL contains in output the 7+MDEGREE elements
-;       [Vel,Sigma,h3,h4,h5,h6,Chi^2/DOF,cx1,cx2,...,cxn], where cx1,cx2,...,cxn
+;       [Vel, Sigma, h3, h4, h5, h6, Chi^2/DOF, cx1, cx2, ..., cxn], where cx1, cx2, ..., cxn
 ;       are the coefficients of the multiplicative Legendre polynomials
-;       of order 1,2,...,n. The polynomial can be explicitly evaluated as:
+;       of order 1, 2, ..., n. The polynomial can be explicitly evaluated as:
 ;           x = cap_range(-1d,1d,n_elements(galaxy))
 ;           mpoly = 1d ; Multiplicative polynomial
 ;           for j=1,MDEGREE do mpoly += legendre(x,j)*sol[6+j]
@@ -338,7 +367,7 @@
 ;    the Gauss-Hermite parameters [h3,h4] for the galaxy under study;
 ;
 ; 3. Perform a Monte Carlo simulation of your spectra, following e.g. the
-;    included ppxf_simulation_example.pro routine. Adopt as S/N in the simulation 
+;    included ppxf_simulation_example.pro routine. Adopt as S/N in the simulation
 ;    the chosen value (S/N)_min and as input [h3,h4] the maximum representative
 ;    values measured in the non-penalized pPXF fit of the previous step;
 ;
@@ -416,23 +445,23 @@
 ;   V4.6.3 -- Do not change TEMPLATES array in output when REGUL is nonzero.
 ;           From feedback of Richard McDermid. MC, Oxford 25 October 2011
 ;   V4.6.4 -- Increased oversampling factor to 30x, when the /OVERSAMPLE keyword
-;           is used. Updated corresponding documentation. Thanks to Nora 
-;           Lu"tzgendorf for test cases illustrating errors in the recovered 
+;           is used. Updated corresponding documentation. Thanks to Nora
+;           Lu"tzgendorf for test cases illustrating errors in the recovered
 ;           velocity when the sigma is severely undersampled.
 ;           MC, Oxford, 9 December 2011
 ;   V4.6.5 -- Expanded documentation of REGUL keyword. MC, Oxford, 15 November 2012
-;   V4.6.6 -- Uses CAP_RANGE to avoid potential naming conflicts. 
+;   V4.6.6 -- Uses CAP_RANGE to avoid potential naming conflicts.
 ;           MC, Paranal, 8 November 2013
 ;   V4.6.7 -- Fixed G-H moments penalization when using multiplicative polynomials.
 ;           Improved /CLEAN loop. MC, Oxford, 6 December 2013
 ;   V4.7.0 -- A PPXF version adapted for multiple kinematic components existed for years.
 ;           It was updated in JAN/2012 for the paper by Johnston et al. (2013, MNRAS).
-;           This version merges those changes with the public PPXF version, making 
-;           sure that all previous PPXF options are still supported. 
+;           This version merges those changes with the public PPXF version, making
+;           sure that all previous PPXF options are still supported.
 ;           MC, Oxford, 9 January 2014
-;   V4.7.1 -- Fixed potential program stop introduced in V4.7.0. 
+;   V4.7.1 -- Fixed potential program stop introduced in V4.7.0.
 ;           MC, Portsmouth, 22 January 2014
-;   V4.7.2 -- Replaced REBIN with INTERPOLATE with /OVERSAMPLE keyword. This is to 
+;   V4.7.2 -- Replaced REBIN with INTERPOLATE with /OVERSAMPLE keyword. This is to
 ;           account for the fact that the Line Spread Function of the observed galaxy
 ;           spectrum already includes pixel convolution. Thanks to Mike Blanton
 ;           for the suggestion. MC, Oxford, 6 May 2014
@@ -441,11 +470,17 @@
 ;   V4.7.4 -- Fixed program stop with REDDENING keyword, introduced in V4.7.
 ;           Thanks to Se'bastien Comero'n (Finland) for reprorting the bug.
 ;           MC, Oxford, 23 May 2014
-;   V4.7.5 -- Relaxed limit on maximum initial velocity shift. 
+;   V4.7.5 -- Relaxed limit on maximum initial velocity shift.
 ;           MC, Oxford, 3 September 2014
 ;   V4.7.6 -- Properly normalize LOSVD with OVERSAMPLE. MC, Oxford, 16 September 2014
-;   V4.7.7 -- Removed change introduced in V4.7.2 after Nora Lutzgendorf report
-;	    of problems. MC, Sydney, 5 February 2015
+;   V4.7.7 -- Reverted change introduced in V4.7.2. Thanks to Nora Lu"tzgendorf
+;           for reporting problems with /OVERSAMPLE. MC, Sydney, 5 February 2015
+;   V4.7.8 -- Updated documentation of MOMENTS for negative values.
+;          MC, Oxford, 9 November 2015
+;   V4.7.9: Included design MATRIX in output and correspondingly updated documentation.
+;          MC, Oxford, 16 November 2015
+;   V4.7.10: Expanded explanation of the relation between output velocity and redshift.
+;          MC, Oxford, 21 January 2016
 ;-
 ;----------------------------------------------------------------------------
 FUNCTION ppxf_reddening_curve, lambda, ebv
@@ -517,9 +552,9 @@ FUNCTION ppxf_fitfunc_optimal_template, pars, $
     BESTFIT=bestFit, BIAS=bias, CLEAN=clean, DEGREE=degree, $
     FACTOR=factor, GALAXY=galaxy, GOODPIXELS=goodPixels, MDEGREE=mdegree, $
     NOISE=noise, QUIET=quiet, SKY=sky, STAR=star, VSYST=vsyst, WEIGHTS=weights, $
-    REGUL=regul, REG_DIM=reg_dim, LAMBDA=lambda, $
+    REGUL=regul, REG_DIM=reg_dim, LAMBDA=lambda, MATRIX=matrix, $
     NCOMP=ncomp, COMPONENT=component, MOMENTS=moments, $
-    TEMP_ARR=temp_arr ; XXX Modified by SH: Output templates array
+    TEMP_ARR=temp_arr  ;; XXX modified by SH, output the template array
 compile_opt idl2, hidden
 
 s = size(galaxy)
@@ -533,10 +568,10 @@ if n_elements(lambda) gt 1 then npars = npars - 1 ; Fitting reddening
 dx = 0
 p = 0
 for j=0,ncomp-1 do begin
-    if nspec eq 2 then $ 
+    if nspec eq 2 then $
         dx >= ceil(abs(vsyst) + abs(pars[0+p]) + 5d*pars[1+p]) $
     else $ ; Sample the Gaussian and GH at least to |vsyst+vel|+5*sigma
-        dx >= ceil(abs(vsyst + pars[0+p]) + 5d*pars[1+p])        
+        dx >= ceil(abs(vsyst + pars[0+p]) + 5d*pars[1+p])
     p += moments[j]
 endfor
 
@@ -552,7 +587,7 @@ for j=0,ncomp-1 do begin
         w2 = w^2
         gauss = exp(-0.5d*w2)
         losvd[*,j,k] = gauss/total(gauss)
-    
+
         ; Hermite polynomials normalized as in Appendix A of van der Marel & Franx (1993).
         ; Coefficients for h5, h6 are given e.g. in Appendix C of Cappellari et al. (2002)
         ;
@@ -602,7 +637,7 @@ if regul gt 0 then begin
     endcase
     ncols = ncols + nreg
 endif
-c = dblarr(ncols,nrows)  ; This array is used for estimating predictions XX SH
+c = dblarr(ncols,nrows)  ; This array is used for estimating predictions
 
 for j=0,degree do $ ; Fill first columns of the Design Matrix
     if nspec eq 2 then begin
@@ -661,7 +696,7 @@ a = c                     ; This array is used for the actual solution of the sy
 s3 = size(noise)
 if s3[1] eq s3[2] then begin ; input NOISE is a npix*npix covariance matrix
     a[0,0] = noise # c[0:npix*nspec-1,*]
-    b = noise # galaxy                  
+    b = noise # galaxy
 endif else begin             ; input NOISE is a 1sigma error vector
     for j=0,nrows-1 do a[0,j] = c[0:npix*nspec-1,j]/noise ; Weight all columns with errors
     b = galaxy/noise
@@ -696,35 +731,37 @@ repeat begin
     endif else break
 endrep until (m eq 0)
 
-; Penalize the solution towards (h3,h4,...)=0 if the inclusion of
+matrix = c  ; Return LOSVD-convolved design matrix
+
+;; Modified by SH; but probably not necesary any more...
+temp_arr = c[0:npix*nspec-1, *]
+
+; Penalize the solution towards (h3, h4, ...) = 0 if the inclusion of
 ; these additional terms does not significantly decrease the error.
+; The lines below implement eq.(8)-(9) in Cappellari & Emsellem (2004)
 ;
 if cap_any(moments gt 2) && bias ne 0 then begin
     p = 0
-    tmp = 0d
+    D2 = 0d
     for j=0,ncomp-1 do begin
         if moments[j] gt 2 then $
-            tmp += total(pars[2+p:moments[j]-1+p]^2)
+            D2 += total(pars[2+p:moments[j]-1+p]^2)  ; eq.(8)
         p += moments[j]
     endfor
-    err = err + bias*robust_sigma(err, /ZERO)*sqrt(tmp)
+    err += bias*robust_sigma(err, /ZERO)*sqrt(D2)  ; eq.(9)
 endif
-
-temp_arr = c[0:npix*nspec-1,*]
 
 return, err
 END
-
 ;----------------------------------------------------------------------------
 PRO hs_ppxf, templates, galaxy, noise1, velScale, start, sol, $
     BESTFIT=bestFit, BIAS=bias, CLEAN=clean, DEGREE=degree, ERROR=error, $
-    GOODPIXELS=goodPixels, MDEGREE=mdegree, MOMENTS=moments1, OVERSAMPLE=oversample, $
-    POLYWEIGHTS=polyweights, PLOT=plot, QUIET=quiet, SKY=sky, VSYST=vsyst, WEIGHTS=weights, $
-    REGUL=regul, LAMBDA=lambda, REDDENING=reddening, $
+    GOODPIXELS=goodPixels, MATRIX=matrix, MDEGREE=mdegree, MOMENTS=moments1, $
+    OVERSAMPLE=oversample, POLYWEIGHTS=polyweights, PLOT=plot, QUIET=quiet, SKY=sky, $
+    VSYST=vsyst, WEIGHTS=weights, REGUL=regul, LAMBDA=lambda, REDDENING=reddening, $
     COMPONENT=component1, REG_DIM=reg_dim1, _EXTRA=ex, $
     MPOLYWEIGHTS=mpolyweights, CHI2DOF=chi2, $
     TEMP_ARR=temp_arr
-    ; XXXX Modified by SH: Output the templates array
 compile_opt idl2
 on_error, 2
 
@@ -737,8 +774,8 @@ if s1[0] ge 3 then begin
     s1 = size(star)
 endif else begin
     star = templates
-    if n_elements(reg_dim1) ne 0 then reg_dim = reg_dim1 
-endelse    
+    if n_elements(reg_dim1) ne 0 then reg_dim = reg_dim1
+endelse
 
 if n_elements(component1) le 1 then $
     component = dblarr(s1[2]) $ ; all templates have the same LOSVD
@@ -763,7 +800,7 @@ else $
 if n_elements(moments) ne ncomp then $
     message, 'MOMENTS must be an array of length NCOMP'
 absmom = abs(moments)
-     
+
 if n_elements(regul) eq 0 then begin
     regul = 0
     reg_dim = 0
@@ -809,7 +846,7 @@ if n_elements(moments) eq 0 then moments = 2 else begin
     for j=0,ncomp-1 do $
         if total(absmom[j] eq [2,4,6]) eq 0 then $
             message, 'MOMENTS should be 2, 4 or 6 (or negative to keep kinematics fixed)'
-endelse            
+endelse
 if ncomp gt 1 && ncomp ne (size(start,/dim))[1] then $
     message, 'Each component must have a starting guess in START'
 if s2[0] eq 2 then goodPixels = [goodPixels,s2[1]-1+goodPixels]  ; two-sided fitting of LOSVD
@@ -889,14 +926,14 @@ for j=0,4 do begin ; Do at most five cleaning iterations
 endfor
 
 ; Evaluate scatter at the bestfit (with BIAS=0)
-; and also get the output BESTFIT and WEIGHTS.
+; and also get the output BESTFIT, WEIGHTS and MATRIX.
 ;
 err = ppxf_fitfunc_optimal_template(res, BESTFIT=bestFit, BIAS=0, DEGREE=degree, $
     FACTOR=factor, GALAXY=galaxy, GOODPIXELS=goodPixels, MDEGREE=mdegree, $
     NOISE=noise, SKY=sky, STAR=star, VSYST=vsyst/velScale, WEIGHTS=weights, $
-    REGUL=regul, REG_DIM=reg_dim, LAMBDA=lambda, $
+    REGUL=regul, REG_DIM=reg_dim, LAMBDA=lambda, MATRIX=matrix, $
     NCOMP=ncomp, COMPONENT=component, MOMENTS=absmom, $
-    TEMP_ARR=temp_arr )  ;; XXX Modified by Song Huang : Output templates array
+    TEMP_ARR=temp_arr )  ;; XXX modified by Song Huang.
 
 chi2 = robust_sigma(err, /ZERO)^2       ; Robust computation of Chi^2/DOF.
 sol = dblarr(7+mdegree*s2[0],ncomp)
@@ -905,16 +942,16 @@ p = 0
 for j=0,ncomp-1 do begin
     sol[0,j] = res[p:absmom[j]+p-1]
     sol[0:1,j] *= velScale ; Bring velocity scale back to km/s
-    error[0,j] = perror[p:absmom[j]+p-1] 
+    error[0,j] = perror[p:absmom[j]+p-1]
     error[0:1,j] *= velScale ; Convert errors to km/s
     p += absmom[j]
-endfor    
+endfor
 
-sol[6,0] = chi2 ; for backward compatibility (one can use CHI2DOF keyword)
+sol[6,0] = chi2 ; for backward compatibility (better to use CHI2DOF keyword)
 if mdegree ge 1 then begin
-    sol[7:*,0] = res[ngh:*] ; for backward compatibility (one can use MPOLYWEIGHTS keyword)
+    sol[7:*,0] = res[ngh:*] ; for backward compatibility (better to use MPOLYWEIGHTS keyword)
     mpolyweights = res[ngh:*]
-endif    
+endif
 
 if n_elements(reddening) gt 0 then reddening = res[ngh] ; Replace input with best fit
 if degree ge 0 then polyweights = weights[0:(degree+1)*s2[0]-1] ; output weights for the additive polynomials
