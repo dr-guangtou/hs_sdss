@@ -430,7 +430,7 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
         ;; TODO: Not sure if this is the best way
         index_flag = where( flag_log GT 0.8 )
         if ( index_flag[0] NE -1 ) then begin  
-            mask_arr[ goodpixels ] = 1L
+            mask_arr[ index_flag ] = 1L
         endif 
     endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
