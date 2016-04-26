@@ -5,7 +5,8 @@ pro coadd_ppxf_test
     ;; Data directory 
     data_dir = './'
     ;; Input spec txt file 
-    spec_file = 'coadd_median.txt'
+    spec_file = 'spec-4349-55803-0985_sl.txt'
+    ; spec_file = 'coadd_median.txt'
     ;; Base file 
     base_file = 'mius_ku13.base'
     ;; Base directory 
@@ -49,9 +50,10 @@ pro coadd_ppxf_test
         data_home=data_dir, dir_ssplib=base_dir,$ 
         vel_guess=vel_guess, sig_guess=sig_guess, $
         mdegree=mdegree, $
-        /include_emission, $
         /debug, /save_result, /save_template, $
         /is_flag, /is_error
+
+        ;/include_emission, $
 
     ;include_emission=include_emission, $
     ;mask_file=mask_file, $ 

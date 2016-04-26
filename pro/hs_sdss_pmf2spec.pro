@@ -43,6 +43,7 @@ function hs_sdss_pmf2spec, list_plate, list_mjd, list_fiber
         case p_len of 
             2 : plate_str = '00' + plate_str 
             3 : plate_str = '0'  + plate_str 
+            4 : plate_str = plate_str
         endcase 
         ;; 
         f_len = strlen( fiber_str ) 

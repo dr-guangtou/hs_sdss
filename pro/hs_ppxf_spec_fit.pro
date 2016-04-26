@@ -820,21 +820,25 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         result_plot = dir_result + name_str + '_ppxf.eps' 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        absres_use = absres[ goodpixels ]
         if keyword_set( include_emission ) then begin 
-            res_range = [ min( absres ), ( max( absres ) > max( best_gas ) ) ]
+            res_range = [ min( absres_use ), $
+                          ( max( absres_use ) > max( best_gas ) ) ]
         endif else begin 
-            res_range = [ min( absres ), max( absres ) ]
+            res_range = [ min( absres_use ), max( absres_use ) ]
         endelse
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        min_y = min( [ min( galaxy ), min( bestfit ), min( mpoly ) ] )
-        max_y = max( [ max( galaxy ), max( bestfit ), max( mpoly ) ] )
+        min_y = min( [ min( galaxy[goodpixels] ), min( bestfit ), $
+            min( mpoly ) ] )
+        max_y = max( [ max( galaxy[goodpixels] ), max( bestfit ), $ 
+            max( mpoly ) ] )
         sep_y = ( max_y - min_y )
         yrange = [ ( min_y - 0.05 * sep_y ), ( max_y + 0.1 * sep_y ) ]
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         mydevice = !d.name 
         !p.font=1
         set_plot, 'ps' 
-        psxsize = 36 
+        psxsize = 40 
         psysize = 28
         pos1 = [ 0.11, 0.30, 0.99, 0.98 ]
         pos2 = [ 0.11, 0.10, 0.99, 0.30 ]
@@ -868,15 +872,15 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
         cgOplot, wave_lin, galaxy, color=cgColor( 'BLK7' ), thick=2.0
         ;; 
         cgOplot, wave_lin, bestfit, color=cgColor( 'BLU6' ), linestyle=0, $
-            thick=1.5
+            thick=6.0
         ;;
         if keyword_set( include_emission ) then begin 
-            cgOplot, wave_lin, best_ste, color=cgColor( 'RED5' ), thick=1.5, $
+            cgOplot, wave_lin, best_ste, color=cgColor( 'RED5' ), thick=3.5, $
                 linestyle=0 
         endif 
         ;;
         cgOplot, wave_lin, mpoly,  color=cgColor( 'GRN5' ), linestyle=2, $
-            thick=1.5
+            thick=6.0
         ;;
         cgPlot, wave_ori, ( flux_ori / flux_norm ), xs=1, ys=1, /noerase, $
             xrange=wave_range_temp, yrange=yrange, thick=1.5, $
@@ -892,15 +896,15 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
             xtitle='Wavelength', ytitle='Res', xticklen=0.075
         cgOPlot, !X.Crange, [ 0.0, 0.0], linestyle=2, color=cgColor( 'BLK4' )
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        cgOplot, wave_lin, absres, thick=1.5, linestyle=0, $
+        cgOplot, wave_lin, absres, thick=2.5, linestyle=0, $
             color=cgColor( 'BLK5' )
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         if ( badpixels[0] NE -1 ) then begin 
             wave_nan = wave_lin 
             ares_nan = absres 
-            wave_nan[ badpixels ] = !VALUES.F_NaN
-            ares_nan[ badpixels ] = !VALUES.F_NaN
-            cgOPlot, wave_nan, ares_nan, thick=1.6, linestyle=0, $
+            wave_nan[ goodpixels ] = !VALUES.F_NaN
+            ares_nan[ goodpixels ] = !VALUES.F_NaN
+            cgOPlot, wave_nan, ares_nan, thick=2.0, linestyle=0, $
                 color=cgColor( 'Red' )
         endif 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

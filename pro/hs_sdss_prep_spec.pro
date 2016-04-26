@@ -72,7 +72,8 @@
 pro hs_sdss_prep_spec, spec_file, suffix=suffix, $
     plot=plot, quiet=quiet, no_extcorr=no_extcorr, $ 
     save_indexf=save_indexf, save_ulyss=save_ulyss, save_sl=save_sl, $
-    ccm=ccm, odl=odl, save_ez=save_ez, ipath=ipath, new_vdp=new_vdp
+    ccm=ccm, odl=odl, save_ez=save_ez, ipath=ipath, new_vdp=new_vdp, $
+    and_mask=and_mask
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 on_error, 2
@@ -89,7 +90,14 @@ endif
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Location of the dust data 
 if NOT keyword_set( ipath ) then begin 
-    ipath = '/home/hs/work/data/dust/'
+    ipath= getenv( 'DUST_DIR' )
+    if strmid(ipath, strlen(ipath) - 1, 1) NE '/' then begin 
+        ipath = ipath + '/'
+    endif
+    if ipath EQ '' then begin 
+        print, 'Can not find the DUST_DIR parameter!!'
+        ipath = './'
+    endif 
 endif else begin 
     ipath = strcompress( ipath, /remove_all ) 
 endelse
@@ -176,7 +184,11 @@ endif
 llam = spec_struc.loglam   ;; alog10( wavelength/Angstrom ) 
 flux = spec_struc.flux     ;; flux in 10^(-17) erg/s/cm^2/Angstrom
 ivar = spec_struc.ivar     ;; inverse variance of flux 
-mask = spec_struc.or_mask  ;; OR mask 
+if keyword_set( and_mask ) then begin 
+    mask = spec_struc.and_mask ;; AND mask 
+endif else begin 
+    mask = spec_struc.or_mask  ;; OR mask 
+endelse
 wdsp = spec_struc.wdisp    ;; wavelength dispersion in pixel=dloglam units 
 skye = spec_struc.sky      ;; subtracted sky flux  
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -200,7 +212,7 @@ vdisp_err = spec_table.vdisp_err
 ;; Display some of the above information
 if NOT keyword_set( QUIET ) then begin 
     print, '##############################################################'
-    print, ' SpecObjID        : ' + spec_id
+    print, ' SpecObjID        : ' + string( spec_id )
     print, ' RA_PLUG / DEC_PLT: ' + string( ra_plug ) + string( dec_plug ) 
     print, ' Redshift +/- Err : ' + string( z ) + ' +/-' + string( z_err )
     print, ' Median S/N in r & i : ' + string( sn_r ) + string( sn_i ) 
@@ -217,11 +229,11 @@ n_pixels = n_elements( flux )
 wave = 10.0D^(llam) 
 ;; Convert ivariance into sigma 
 sigma = SQRT( 1.0D / ivar ) 
-;; Find the bad pixels with OR_MAKS != 0
+;; Find the bad pixels with MAKS != 0
 bad_pixels1 = where( mask ne 0 ) 
-;; Find the bad pixels that have ivar = 0 
+;; Find the bad pixels that have IVAR = 0 
 bad_pixels2 = where( ivar eq 0 ) 
-;; Mask out the bad pixels in the OR_MASK and where ivar = 0 
+;; Mask out the bad pixels in the MASK and where ivar = 0 
 mask_bad = mask 
 if ( bad_pixels1[0] ne -1 ) then begin 
     mask_bad[ bad_pixels1 ] = 1 
@@ -232,15 +244,21 @@ endif
 num_bad = n_elements( where( mask_bad eq 1 ) )
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Calculate the ratio of sky flux and the flux of the target 
+;; TODO: Should have an option for absolute or relative sky clipping
 sky_obj_ratio = ( skye / flux )
 ;; Define the pixel with sky_obj_ratio larger than 3rd Quartile + 3.0 * IQ 
 ;; as the pixels strongly affected by sky emission lines. 
 ;; Build a separate mask for it 
-mask_sky = fltarr( n_pixels ) 
-sky_summary = hs_basic_stats( sky_obj_ratio ) 
-sky_outlier = sky_summary.uofen
-mask_sky[ where( sky_obj_ratio ge sky_outlier ) ] = 1 
+mask_sky = intarr( n_pixels ) 
+
+;; XXX Do not used relative mask
+sky_summary = hs_basic_stats( skye ) 
+sky_factor = 2.0
+sky_outlier = ( sky_summary.uofen * sky_factor )
+mask_sky[ where( skye ge sky_outlier ) ] = 1 
+
 num_sky = n_elements( where( mask_sky eq 1 ) )
+
 ;; Build a combined mask based on Mask_BAD and Mask_SKY
 mask_all = mask_bad 
 mask_all[ where( mask_sky eq 1 ) ] = 1 
@@ -252,7 +270,7 @@ if NOT keyword_set( QUIET ) then begin
     print, ' Number of Pixels    : ' + string( n_pixels ) 
     print, ' Number of Bad Pixels : ' + string( num_bad ) 
     print, ' Number of Pixels Affected by Sky Emission : ' + string( num_sky )
-    print, ' Value for Outliers of Sky/Flux : ' + string( sky_outlier )
+    print, ' Sky Outlier Threshold : ' + string( sky_outlier )
 endif
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Move the spectrum back to restframe 
@@ -313,13 +331,28 @@ if keyword_set( PLOT ) then begin
     pos = [ 0.09, 0.10, 0.99, 0.99 ]
     cgPlot, rest, flux, xstyle=1, linestyle=0, color=cgColor( 'Gray' ), $
         position=pos, xtitle='Wavelength', ytitle='Flux', /nodata
+    
+    cgOPlot, rest_inter, skye_inter, linestyle=2, color=cgColor('Orange')
+
     cgOPlot, wave, flux, linestyle=0, color=cgColor( 'Gray' )
-    cgOPlot, rest, flux, linestyle=0, color=cgColor( 'Red' )
+    cgOPlot, rest, flux, linestyle=0, color=cgColor( 'Cyan' )
     cgOPlot, rest, flux_deredden, linestyle=0, color=cgColor( 'Blue' ) 
-    cgOPlot, rest, ( flux_deredden + sigma ), linestyle=2, $
-        color=cgColor( 'Cyan' )
-    cgOPlot, rest, ( flux_deredden - sigma ), linestyle=2, $
-        color=cgColor( 'Cyan' )
+    
+    ;; Pixels affected by sky
+    index_nosky = where( mask_sky EQ 0 )
+    temp = flux 
+    temp[ index_nosky ] = !VALUES.F_NaN
+    cgOplot, rest, temp, linestyle=0, color=cgColor( 'Red' )
+    
+    ;; Pixels without mask
+    index_bad = where( mask_inter GT 0 )
+    temp = flux_inter 
+    temp[ index_bad ] = !VALUES.F_NaN 
+    cgOPlot, rest_inter, temp, linestyle=0, color=cgColor( 'Green' )
+    ;cgOPlot, rest, ( flux_deredden + sigma ), linestyle=2, $
+    ;    color=cgColor( 'Cyan' )
+    ;cgOPlot, rest, ( flux_deredden - sigma ), linestyle=2, $
+    ;    color=cgColor( 'Cyan' )
 endif
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
