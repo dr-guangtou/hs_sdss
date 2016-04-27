@@ -73,7 +73,7 @@ pro hs_sdss_prep_spec, spec_file, suffix=suffix, $
     plot=plot, quiet=quiet, no_extcorr=no_extcorr, $ 
     save_indexf=save_indexf, save_ulyss=save_ulyss, save_sl=save_sl, $
     ccm=ccm, odl=odl, save_ez=save_ez, ipath=ipath, new_vdp=new_vdp, $
-    and_mask=and_mask
+    and_mask=and_mask, pg10=pg10
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 on_error, 2
@@ -285,8 +285,12 @@ coeff0_new = coeff0 - alog10( 1.0D + double( z ) )
 ;; Convert the RA and DEC of the plug into Galactic coordinate: 
 glactc, ra_plug, dec_plug, 2000., gl_plug, gp_plug, 1, /deg
 ;; Get the E(B-V) value for GL_PLUG and GP_PLUG 
-ebv = dust_getval( gl_plug, gp_plug, ipath=ipath, /interp, /pg10 ) 
-if keyword_set(no_extcorr) then begin
+if keyword_set( pg10 ) then begin 
+    ebv = dust_getval( gl_plug, gp_plug, ipath=ipath, /interp, /pg10 ) 
+endif else begin 
+    ebv = dust_getval( gl_plug, gp_plug, ipath=ipath, /interp ) 
+endelse
+if keyword_set( no_extcorr ) then begin
     ;; Correction of the Galactic extinction 
     ;; A(V) = E(B-V) * R(V)
     R_v = 3.1 

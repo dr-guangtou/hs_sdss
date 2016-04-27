@@ -311,7 +311,6 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
     endif else begin 
         dir_base = strcompress( dir_base, /remove_all )
     endelse 
-    print, "!!! " + dir_base
 
     if NOT file_test( dir_base + base_file ) then begin 
         print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
@@ -422,6 +421,11 @@ pro hs_ppxf_spec_fit, spec_file, base_file, $
     endif 
     ;; Prepare the mask array 
     mask_arr = ( flux_trim_log * 0L ) 
+    ;; Check noise 
+    error_trim_log[ where( finite(error_trim_log, /NaN ) ) ] = 9999.0
+    error_trim_log[ where( finite(error_trim_log, /Infinity ) ) ] = 9999.0
+    mask_arr[ where( finite(error_trim_log, /NaN ) ) ] = 98
+    mask_arr[ where( finite(error_trim_log, /Infinity ) ) ] = 98
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Log-Rebin the flag 
     if keyword_set( is_flag ) then begin 
