@@ -1,0 +1,25 @@
+10                                               [Number of fits to run]
+/Users/songhuang/work/project/hvdisp/lib/base/   [base_dir]
+input/                                           [obs_dir]
+mask/                                            [mask_dir] 
+output/                                          [out_dir]
+-186516                                          [your phone number]
+5590                                             [llow_SN]   lower-lambda of S/N window
+5680                                             [lupp_SN]   upper-lambda of S/N window
+3680                                             [Olsyn_ini] lower-lambda for fit
+7000                                             [Olsyn_fin] upper-lambda for fit
+1.0                                              [Odlsyn]    delta-lambda for fit
+1.0                                              [fscale_chi2] fudge-factor for chi2
+FIT                                              [FIT/FXK] Fit or Fix kinematics
+1                                                [IsErrSpecAvailable]  1/0 = Yes/No
+1                                                [IsFlagSpecAvailable] 1/0 = Yes/No
+spec-0528-52022-0137_sl.txt sl_fast.config mius_ku13_full.base sl_mask1.lis CAL 0.0 120.0 spec-0528-52022-0137_mius_ku13_r1.out
+spec-0528-52022-0137_sl.txt sl_fast.config mius_ku13_full.base sl_mask1.lis CAL 0.0 120.0 spec-0528-52022-0137_mius_ku13_r2.out
+spec-0528-52022-0137_sl.txt sl_fast.config mius_ku13_full.base sl_mask1.lis CAL 0.0 120.0 spec-0528-52022-0137_mius_ku13_r3.out
+spec-0528-52022-0137_sl.txt sl_fast.config mius_ku13_full.base sl_mask1.lis CAL 0.0 120.0 spec-0528-52022-0137_mius_ku13_r4.out
+spec-0528-52022-0137_sl.txt sl_fast.config mius_ku13_full.base sl_mask1.lis CAL 0.0 120.0 spec-0528-52022-0137_mius_ku13_r5.out
+spec-2515-54180-0377_sl.txt sl_fast.config mius_ku13_full.base sl_mask1.lis CAL 0.0 290.0 spec-2515-54180-0377_mius_ku13_r1.out
+spec-2515-54180-0377_sl.txt sl_fast.config mius_ku13_full.base sl_mask1.lis CAL 0.0 290.0 spec-2515-54180-0377_mius_ku13_r2.out
+spec-2515-54180-0377_sl.txt sl_fast.config mius_ku13_full.base sl_mask1.lis CAL 0.0 290.0 spec-2515-54180-0377_mius_ku13_r3.out
+spec-2515-54180-0377_sl.txt sl_fast.config mius_ku13_full.base sl_mask1.lis CAL 0.0 290.0 spec-2515-54180-0377_mius_ku13_r4.out
+spec-2515-54180-0377_sl.txt sl_fast.config mius_ku13_full.base sl_mask1.lis CAL 0.0 290.0 spec-2515-54180-0377_mius_ku13_r5.out

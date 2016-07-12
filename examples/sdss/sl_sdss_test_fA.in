@@ -13,7 +13,7 @@ output/                                          [out_dir]
 FIT                                              [FIT/FXK] Fit or Fix kinematics
 1                                                [IsErrSpecAvailable]  1/0 = Yes/No
 1                                                [IsFlagSpecAvailable] 1/0 = Yes/No
-spec-1039-52707-0207_sl.txt sl_fast.config mius_ku13_full.base sl_mask1.lis CCM 0.0 200.0 spec-1039-52707-0207_mius_ku13_fA.out
+spec-2515-54180-0377_sl.txt sl_fast.config mius_ku13_full.base sl_mask1.lis CAL 0.0 290.0 spec-2515-54180-0377_mius_ku13_fA.out
 spec-0528-52022-0137_sl.txt sl_fast.config mius_ku13_full.base sl_mask1.lis CAL 0.0 120.0 spec-0528-52022-0137_mius_ku13_fA.out
 spec-2095-53474-0355_sl.txt sl_fast.config mius_ku13_full.base sl_mask1.lis CAL 0.0 75.0 spec-2095-53474-0355_mius_ku13_fA.out
 spec-2618-54506-0310_sl.txt sl_fast.config mius_ku13_full.base sl_mask1.lis CAL 0.0 75.0 spec-2618-54506-0310_mius_ku13_fA.out
