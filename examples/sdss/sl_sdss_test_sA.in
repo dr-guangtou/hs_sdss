@@ -1,0 +1,19 @@
+5                                                [Number of fits to run]
+/Users/song/work/lib/ssp/miuscat/txt/sigma70/    [base_dir]
+input/                                           [obs_dir]
+mask/                                            [mask_dir] 
+output/                                          [out_dir]
+1865168                                          [your phone number]
+5590                                             [llow_SN]   lower-lambda of S/N window
+5680                                             [lupp_SN]   upper-lambda of S/N window
+3700                                             [Olsyn_ini] lower-lambda for fit
+7400                                             [Olsyn_fin] upper-lambda for fit
+1.0                                              [Odlsyn]    delta-lambda for fit
+1.0                                              [fscale_chi2] fudge-factor for chi2
+FIT                                              [FIT/FXK] Fit or Fix kinematics
+1                                                [IsErrSpecAvailable]  1/0 = Yes/No
+1                                                [IsFlagSpecAvailable] 1/0 = Yes/No
+spec-2515-54180-0377_sl.txt sl_slow.config mius_ku13_full.base sl_mask1.lis CAL 0.0 290.0 spec-2515-54180-0377_mius_ku13_sA.out
+spec-0528-52022-0137_sl.txt sl_slow.config mius_ku13_full.base sl_mask1.lis CAL 0.0 120.0 spec-0528-52022-0137_mius_ku13_sA.out
+spec-2095-53474-0355_sl.txt sl_slow.config mius_ku13_full.base sl_mask1.lis CAL 0.0 75.0 spec-2095-53474-0355_mius_ku13_sA.out
+spec-2618-54506-0310_sl.txt sl_slow.config mius_ku13_full.base sl_mask1.lis CAL 0.0 75.0 spec-2618-54506-0310_mius_ku13_sA.out
