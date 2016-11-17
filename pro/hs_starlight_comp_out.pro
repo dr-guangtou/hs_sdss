@@ -24,7 +24,7 @@ pro hs_starlight_comp_out, list, feature_over=feature_over, $
     min_window=min_window, max_window=max_window, $ 
     text_over=text_over, ytitle=ytitle, offset=offset, $ 
     text_0=text_0, text_1=text_1, topng=topng, summary=summary, $
-    compare_repeat=compare_repeat
+    compare_repeat=compare_repeat, index_list=index_list
 
 ;; List file 
 list = strcompress( list, /remove_all ) 
@@ -39,6 +39,23 @@ endif else begin
     openr, 10, list 
     readf, 10, sl_list 
     close, 10 
+endelse
+
+;; Index to over-plot 
+if keyword_set( index_list ) then begin 
+    index_list = strcompress( index_list, /remove_all ) 
+endif else begin 
+    index_list = 'hs_index_plot_air.lis' 
+endelse
+if file_test( index_list ) then begin 
+    list_find = 1 
+endif else begin 
+    list_find = 0 
+    print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+    print, ' Can not find the index list file, Can not overplot !! '
+    print, ' ' + index_list
+    print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+    message, ' '
 endelse
 
 ;; Color list 
@@ -95,10 +112,8 @@ if file_test( sl_list[0] ) then begin
             min( spec_struc[index_window].spec_syn ) 
         max_flux = max( spec_struc[index_window].spec_obs ) < $
             max( spec_struc[index_window].spec_syn ) 
-        min_res  = min( spec_struc[index_window].spec_res ) < $
-            min( spec_struc[index_window].spec_syn ) 
-        max_res  = max( spec_struc[index_window].spec_res ) < $
-            max( spec_struc[index_window].spec_syn ) 
+        min_res  = min( spec_struc[index_window].spec_res ) 
+        max_res  = max( spec_struc[index_window].spec_res ) 
     endelse 
 endif else begin 
     print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
@@ -113,6 +128,7 @@ new_wave = min_window + findgen( n_pixel )
 new_struc = { name:'', $
     spec_file:'', base_file:'', mask_file:'', config_file:'', $
     wave:fltarr(n_pixel), obs:fltarr(n_pixel), syn:fltarr(n_pixel), $
+    err:fltarr(n_pixel), res:fltarr(n_pixel), $
     chi2:0.0, adev:0.0, nl_eff:0, n_base:0, av:0.0, v0:0.0, vd:0.0, $
     at_flux:0.0, at_mass:0.0, am_flux:0.0, am_mass:0.0, $
     aic:0.0, bic:0.0, n_ex0s_base:0, $
@@ -166,18 +182,27 @@ for i = 0, ( n_compare - 1 ), 1 do begin
             new_wave, /spline )
         syn_inter = interpol( spec_struc.spec_syn, spec_struc.spec_lam, $
             new_wave, /spline )
+        err_inter = interpol( (1.0 / spec_struc.spec_wei), spec_struc.spec_lam, $
+            new_wave, /spline )
 
         new_struc[i].wave = new_wave 
         new_struc[i].obs  = obs_inter 
         new_struc[i].syn  = syn_inter  
+        new_struc[i].err  = err_inter
+        new_struc[i].res  = (obs_inter - syn_inter) / err_inter
 
-        min_flux = min( obs_inter ) < min_flux  
-        min_flux = min( syn_inter ) < min_flux  
-        max_flux = max( obs_inter ) > max_flux  
-        max_flux = max( syn_inter ) > max_flux  
+        index_use = where((new_wave > min(new_wave) + 100.0) AND $ 
+                          (new_wave < max(new_wave) - 100.0))
 
-        min_res = min( obs_inter - syn_inter ) < min_res 
-        max_res = max( obs_inter - syn_inter ) > max_res 
+        min_flux = min( obs_inter[index_use] ) < min_flux  
+        min_flux = min( syn_inter[index_use] ) < min_flux  
+        max_flux = max( obs_inter[index_use] ) > max_flux  
+        max_flux = max( syn_inter[index_use] ) > max_flux  
+
+        min_res = min( (obs_inter[index_use] - syn_inter[index_use] ) / $
+            err_inter[index_use] ) < min_res 
+        max_res = max( (obs_inter[index_use] - syn_inter[index_use] ) / $
+            err_inter[index_use] ) > max_res 
 
         index_uniq_age = uniq( base_struc.age, sort( base_struc.age ) ) 
         ssp_age_arr = base_struc[ index_uniq_age ].age
@@ -257,8 +282,9 @@ endif else begin
     flux_range = [ ( min_flux - ( n_compare - 1 ) * flux_offset ), $
         ( max_flux + flux_sep * 0.015 ) ] 
 endelse
+
 res_sep = ( max_res - min_res ) 
-res_range = [ ( min_res - res_sep * 0.05 ), ( max_res + res_sep * 0.05 ) ]
+res_range = [ ( min_res - 0.1 ), ( max_res + 0.05 ) ]
 
 ;; Name of the figure 
 temp = strsplit( list, '.', /extract ) 
@@ -268,7 +294,8 @@ plot_string = strcompress( temp[0], /remove_all ) + '_' + $
 plot_compare = plot_string + '.eps'
 file_compare = strcompress( temp[0], /remove_all ) + '_compare.fits'
 ;; 
-plot_sum = strcompress( temp[0], /remove_all ) + '_sum.eps'
+sum_string = strcompress( temp[0], /remove_all )
+plot_sum = sum_string + '_sum.eps'
 file_sum = strcompress( temp[0], /remove_all ) + '_sum.csv'
 
 ;; Save the spectra comparison file 
@@ -308,32 +335,39 @@ close, 10
 ;;  |_|   |_____\___/ |_|    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-position_1 = [ 0.13, 0.30, 0.99, 0.99 ]
-position_2 = [ 0.13, 0.12, 0.99, 0.30 ]
+position_1 = [ 0.08, 0.48, 0.97, 0.99 ]
+position_2 = [ 0.08, 0.12, 0.97, 0.48 ]
 
 mydevice = !d.name 
 !p.font=1
-psxsize = 32 
+psxsize = 48 
 psysize = 28 
 set_plot, 'ps' 
 device, filename=plot_compare, font_size=9.0, /encapsulated, $
     /color, set_font='TIMES-ROMAN', /bold, xsize=psxsize, ysize=psysize
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Highlight interesting spectral features 
+if keyword_set( feature_over ) then begin 
+    hs_spec_index_over, index_list, /center_line
+endif
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;; Observed and Synthetic spectra
 if keyword_set( ytitle ) then begin 
     cgPlot, new_struc[0].wave, new_struc[0].obs, xstyle=1, ystyle=1, $
-        linestyle=0, color=cgColor( 'Black' ), thick=3.0, charsize=4.5, $
+        linestyle=0, color=cgColor( 'Black' ), thick=3.0, charsize=4.0, $
         ytitle='Flux (Normalized)', charthick=9.0, xthick=12.0, ythick=12.0, $
         /noerase, position=position_1, $
         xtickformat="(A1)", /nodata, xrange=wave_range, yrange=flux_range, $
         xticklen=0.03, yticklen=0.02
 endif else begin 
     cgPlot, new_struc[0].wave, new_struc[0].obs, xstyle=1, ystyle=1, $
-        linestyle=0, color=cgColor( 'Black' ), thick=3.0, charsize=4.5, $
+        linestyle=0, color=cgColor( 'Black' ), thick=3.0, charsize=4.0, $
         charthick=9.0, xthick=12.0, ythick=12.0, $
         /noerase, position=position_1, $
         xtickformat="(A1)", /nodata, xrange=wave_range, yrange=flux_range, $
-        xticklen=0.03, yticklen=0.02, ytickformat='(A1)'
+        xticklen=0.03, yticklen=0.02
 endelse
 cgPlot, new_struc[0].wave, new_struc[0].obs, linestyle=0, thick=5.0, $
     color=cgColor( 'Dark Gray' ), /overplot 
@@ -361,7 +395,7 @@ if keyword_set( text_over ) then begin
     if keyword_set( text_0 ) then begin 
         t_left = float( text_0 ) 
     endif else begin 
-        t_left = ( position_1[0] * 1.1 )
+        t_left = ( position_1[0] * 1.2 )
     endelse
     if keyword_set( text_1 ) then begin 
         t_top = float( text_1 ) 
@@ -375,13 +409,13 @@ if keyword_set( text_over ) then begin
         xstart = t_left 
         xend   = ( t_left + xstep * 2.2 ) 
         ystart = ( t_top - ( k * ystep ) ) 
-        cgPlots, [ xstart, xend ], [ ystart, ystart ], linestyle=0, thick=9.0, $ 
+        cgPlots, [ xstart, xend ], [ ystart, ystart ], linestyle=0, thick=7.0, $ 
             color=cgColor( color_list[k] ), /normal 
         ;; label 
         xstart = ( xend + xstep * 0.4 ) 
-        ystart = ( ystart - ystep * 0.15 ) 
+        ystart = ( ystart - ystep * 0.05 ) 
         label = strcompress( new_struc[k].name, /remove_all ) 
-        cgText, xstart, ystart, label, charthick=9.0, charsize=3.5, $
+        cgText, xstart, ystart, label, charthick=7.0, charsize=2.0, $
             color=cgColor( 'Black' ), /normal
     endfor 
 endif 
@@ -390,11 +424,11 @@ cgPlot, new_struc[0].wave, new_struc[0].obs, xstyle=1, ystyle=1, $
     charthick=9.0, xthick=12.0, ythick=12.0, $
     /noerase, position=position_1, $
     xtickformat="(A1)", /nodata, xrange=wave_range, yrange=flux_range, $
-    xticklen=0.03, yticklen=0.02, ytickformat='(A1)'
+    xticklen=0.03, yticklen=0.02
 
 ;; Residual spectra
 if keyword_set( ytitle ) then begin 
-    cgPlot, new_struc[0].wave, ( new_struc[0].obs - new_struc[0].syn ), $
+    cgPlot, new_struc[0].wave, new_struc[0].res, $
         xstyle=1, ystyle=1, $
         linestyle=0, color=cgColor( 'Black' ), thick=3.0, charsize=4.0, $
         ytitle='Residual', charthick=9.0, xthick=12.0, ythick=12.0, $
@@ -403,48 +437,54 @@ if keyword_set( ytitle ) then begin
         xtickformat="(A1)", /nodata, xrange=wave_range, yrange=res_range, $
         xticklen=0.1, yticklen=0.015
 endif else begin 
-    cgPlot, new_struc[0].wave, ( new_struc[0].obs - new_struc[0].syn ), $
+    cgPlot, new_struc[0].wave, new_struc[0].res, $
         xstyle=1, ystyle=1, $
         linestyle=0, color=cgColor( 'Black' ), thick=3.0, charsize=4.0, $
         charthick=9.0, xthick=12.0, ythick=12.0, $
         /noerase, position=position_2, yminor=-1, $
         xtitle='Wavelength (' + cgSymbol( 'Angstrom' ) + ')', $
         xtickformat="(A1)", /nodata, xrange=wave_range, yrange=res_range, $
-        xticklen=0.1, yticklen=0.015, ytickformat='(A1)'
+        xticklen=0.1, yticklen=0.015
 endelse
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Highlight interesting spectral features 
+if keyword_set( feature_over ) then begin 
+    hs_spec_index_over, index_list, /center_line
+endif
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 if keyword_set( compare_repeat ) then begin 
     for i = 0, ( n_compare - 1 ), 1 do begin 
-        cgPlot, new_struc[i].wave, ( new_struc[i].obs - new_struc[i].syn ), $
-            linestyle=0, thick=2.5, color=cgColor( 'Red' ), /overplot 
+        cgPlot, new_struc[i].wave, new_struc[i].res, $
+            linestyle=0, thick=2.0, color=cgColor( 'Red' ), /overplot 
+        if i NE 0 then begin 
+            cgPlot, new_struc[i].wave, new_struc[i].res, $
+                linestyle=0, thick=2.0, color=cgColor( color_list[i] ), $
+                /overplot 
+        endif 
     endfor 
 endif else begin 
     for i = 0, ( n_compare - 1 ), 1 do begin 
-        cgPlot, new_struc[i].wave, ( new_struc[i].obs - new_struc[i].syn ), $
+        cgPlot, new_struc[i].wave, new_struc[i].res, $
             linestyle=0, thick=2.5, color=cgColor( color_list[i] ), /overplot 
     endfor 
 endelse
+
 cgPlot, !X.Crange, [0.0, 0.0], linestyle=2, thick=6.0, /overplot, $
     color=cgColor( 'Black' )
-cgPlot, new_struc[0].wave, ( new_struc[0].obs - new_struc[0].syn ), $
+cgPlot, new_struc[0].wave, new_struc[0].res, $
     xstyle=1, ystyle=1, $
     linestyle=0, color=cgColor( 'Black' ), thick=3.0, charsize=4.0, $
     charthick=9.0, xthick=12.0, ythick=12.0, $
     /noerase, position=position_2, yminor=-1, $
     /nodata, xrange=wave_range, yrange=res_range, $
-    xticklen=0.1, yticklen=0.015, ytickformat='(A1)'
+    xticklen=0.1, yticklen=0.015
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 device, /close 
 set_plot, mydevice 
 
-if keyword_set( topng ) then begin 
-    spawn, 'which convert', imagick_convert 
-    plot_png = plot_string + '.png' 
-    spawn, imagick_convert + ' -density 200 ' + plot_file + $
-        ' -quality 90 -flatten ' + plot_png 
-endif 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 if keyword_set( summary ) then begin 
 
@@ -650,12 +690,10 @@ if keyword_set( summary ) then begin
                 psym=9, thick=10.0, symsize=2.5, symcolor=cgColor( 'Dark Gray' )
             cgPlots, mean_av, mean_vd, psym=16, symsize=2.6, $ 
                 symcolor=cgColor( 'Black' )
-            cgErrPlot, mean_av, ( mean_vd - sig_vd ), $ 
-                ( mean_vd + sig_vd ), color=cgColor( 'Black' ), $
-                thick=9.0, width=0.04
-            cgErrPlot, mean_vd, ( mean_av - sig_av ), $ 
-                ( mean_av + sig_av ), color=cgColor( 'Black' ), $
-                thick=9.0, width=0.04, /horizontal
+            cgPlot, mean_av, mean_vd, pysm=16, symsize=2.6, $ 
+                symcolor=cgColor( 'Black' ), $
+                err_xlow=sig_av, err_xhigh=sig_av, $
+                err_ylow=sig_vd, err_yhigh=sig_vd, /overplot
             cgPlots, median_av, median_vd, psym=46, symsize=3.5, $ 
                 symcolor=cgColor( 'Red' )
         endif else begin 
@@ -681,12 +719,10 @@ if keyword_set( summary ) then begin
                 psym=9, thick=10.0, symsize=2.5, symcolor=cgColor( 'Dark Gray' )
             cgPlots, mean_at_flux, mean_am_flux, psym=16, symsize=2.6, $ 
                 symcolor=cgColor( 'Black' )
-            cgErrPlot, mean_at_flux, ( mean_am_flux - sig_am_flux ), $ 
-                ( mean_am_flux + sig_am_flux ), color=cgColor( 'Black' ), $
-                thick=9.0, width=0.04
-            cgErrPlot, mean_am_flux, ( mean_at_flux - sig_at_flux ), $ 
-                ( mean_at_flux + sig_at_flux ), color=cgColor( 'Black' ), $
-                thick=9.0, width=0.04, /horizontal
+            cgPlot, mean_at_flux, mean_am_flux, pysm=16, symsize=2.6, $ 
+                symcolor=cgColor( 'Black' ), $
+                err_xlow=sig_at_flux, err_xhigh=sig_at_flux, $
+                err_ylow=sig_am_flux, err_yhigh=sig_am_flux, /overplot
             cgPlots, median_at_flux, median_am_flux, psym=46, symsize=3.5, $ 
                 symcolor=cgColor( 'Red' )
         endif else begin 
@@ -716,12 +752,10 @@ if keyword_set( summary ) then begin
                 psym=9, thick=10.0, symsize=2.5, symcolor=cgColor( 'Dark Gray' )
             cgPlots, mean_at_mass, mean_am_mass, psym=16, symsize=2.6, $ 
                 symcolor=cgColor( 'Black' )
-            cgErrPlot, mean_at_mass, ( mean_am_mass - sig_am_mass ), $ 
-                ( mean_am_mass + sig_am_mass ), color=cgColor( 'Black' ), $
-                thick=9.0, width=0.04
-            cgErrPlot, mean_am_mass, ( mean_at_mass - sig_at_mass ), $ 
-                ( mean_at_mass + sig_at_mass ), color=cgColor( 'Black' ), $
-                thick=9.0, width=0.04, /horizontal
+            cgPlot, mean_at_mass, mean_am_mass, pysm=16, symsize=2.6, $ 
+                symcolor=cgColor( 'Black' ), $
+                err_xlow=sig_at_mass, err_xhigh=sig_at_mass, $
+                err_ylow=sig_am_mass, err_yhigh=sig_am_mass, /overplot
             cgPlots, median_at_mass, median_am_mass, psym=46, symsize=3.5, $ 
                 symcolor=cgColor( 'Red' )
         endif else begin 
@@ -895,4 +929,17 @@ if keyword_set( summary ) then begin
 endif 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
 
+if keyword_set( topng ) then begin 
+    spawn, 'which convert', imagick_convert 
+
+    plot_png = plot_string + '.png' 
+    spawn, imagick_convert + ' -density 200 ' + plot_compare + $
+        ' -quality 90 -flatten ' + plot_png 
+
+    sum_png = sum_string + '.png' 
+    spawn, imagick_convert + ' -density 200 ' + plot_sum + $
+        ' -quality 90 -flatten ' + sum_png 
+endif 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 end 
