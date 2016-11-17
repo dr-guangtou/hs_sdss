@@ -369,7 +369,8 @@ cgPlot, new_struc[0].wave, new_struc[0].obs, linestyle=0, thick=5.0, $
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Highlight interesting spectral features 
 if keyword_set( feature_over ) then begin 
-    hs_spec_index_over, index_list, /label_over, /center_line, $ 
+    hs_spec_index_over, index_list, /center_line
+    hs_spec_index_over, index_list, /label_over, /no_fill, /no_line, $
         xstep=35, ystep=30, charsize=1.5
 endif
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
