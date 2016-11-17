@@ -79,7 +79,11 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
         if ( n_seg EQ 1 ) then begin 
             loc_output = '' 
         endif else begin 
-            loc_output = '/'
+            if strmid( sl_output, 0, 1 ) EQ '/' then begin 
+                loc_output = '/'
+            endif else begin 
+                loc_output = ''
+            endelse
             for ii = 0, ( n_seg - 2 ), 1 do begin 
                 loc_output = loc_output + temp[ ii ] + '/' 
             endfor 
@@ -215,12 +219,12 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
     mcor_sum    = total( base_struc.mcor )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; min and max value for different spectra
-    min_lam     = min( spec_struc.spec_lam )
-    max_lam     = max( spec_struc.spec_lam )
-    min_obs     = min( spec_struc.spec_obs )
-    max_obs     = max( spec_struc.spec_obs )
-    min_syn     = min( spec_struc.spec_syn )
-    max_syn     = max( spec_struc.spec_syn )
+    min_lam     = min( spec_struc.spec_lam, /NaN )
+    max_lam     = max( spec_struc.spec_lam, /NaN )
+    min_obs     = min( spec_struc.spec_obs, /NaN )
+    max_obs     = max( spec_struc.spec_obs, /NaN )
+    min_syn     = min( spec_struc.spec_syn, /NaN )
+    max_syn     = max( spec_struc.spec_syn, /NaN )
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; pixel value at the wavelength for normalization for synthetic spectrum 
     l_base_norm = sl_struc.l_norm 
@@ -324,10 +328,10 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
     
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Define the range for age and metallicity for plotting
-    min_age   = min( age_log_arr )
-    max_age   = max( age_log_arr )
-    min_met   = min( met_m2h_arr )
-    max_met   = max( met_m2h_arr )
+    min_age   = min( age_log_arr, /NaN )
+    max_age   = max( age_log_arr, /NaN )
+    min_met   = min( met_m2h_arr, /NaN )
+    max_met   = max( met_m2h_arr, /NaN )
     age_grid  = range( min_age, max_age, n_uniq_age ) 
     met_grid  = range( min_met, max_met, n_uniq_met )
     age_range = [ min_age * 0.8, max_age * 1.30 ]
@@ -370,9 +374,9 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
         psxsize = float( psxsize ) 
     endif else begin 
         if keyword_set( zoomin ) then begin 
-            psxsize=46 
+            psxsize=56 
         endif else begin 
-            psxsize=46 
+            psxsize=56 
         endelse
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -434,7 +438,8 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
     spec_syn   = spec_struc.spec_syn
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if keyword_set( relative_res ) then begin 
-        spec_res = ( ( spec_struc.spec_res / spec_struc.spec_obs ) * 100.0 )
+        ;spec_res = ( ( spec_struc.spec_res / spec_struc.spec_obs ) * 100.0 )
+        spec_res = ( spec_struc.spec_res / (1.0 / spec_struc.spec_wei ) )
     endif else begin 
         spec_res = spec_struc.spec_res 
     endelse
@@ -458,6 +463,7 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
     syn_nan     = spec_syn 
     res_nan     = spec_res 
     wei_nan     = spec_wei 
+    err_nan     = (1.0 / spec_wei)
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     if ( index_final[0] NE -1 ) then begin 
         wave_nan[ index_final ] = !VALUES.F_NaN
@@ -465,6 +471,7 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
         syn_nan[ index_final ]  = !VALUES.F_NaN
         res_nan[ index_final ]  = !VALUES.F_NaN
         wei_nan[ index_final ]  = !VALUES.F_NaN
+        err_nan[ index_final ]  = !VALUES.F_NaN
     endif 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     
@@ -473,22 +480,23 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
     if keyword_set( res_cushion ) then begin 
         res_cushion = float( res_cushion ) ;; \AA
     endif else begin 
-        res_cushion = ( ( max( wave )- min( wave ) ) / 80.0 )
+        res_cushion = ( ( max( wave, /NaN )- min( wave, /NaN ) ) / 80.0 )
     endelse
-    index_res = where( ( wave GE ( min( wave ) + res_cushion ) ) AND $ 
-                       ( wave LE ( max( wave ) - res_cushion ) ) )
+    index_res = where( ( wave GE ( min( wave, /NaN ) + res_cushion ) ) AND $ 
+                       ( wave LE ( max( wave, /NaN) - res_cushion ) ) )
     if ( index_res[ 0 ] EQ -1 ) then begin 
         message, ' The res_cushion is not appropriately defined !! '
     endif 
     if keyword_set( exclude_mask_res ) then begin 
-        min_res = min( res_nan )
-        max_res = max( res_nan )
+        min_res = min( res_nan, /NaN )
+        max_res = max( res_nan, /NaN)
         med_res = median( res_nan )
     endif else begin 
-        min_res = min( spec_res[ index_res ] )
-        max_res = max( spec_res[ index_res ] )
+        min_res = min( spec_res[ index_res ], /NaN )
+        max_res = max( spec_res[ index_res ], /NaN )
         med_res = median( spec_res[ index_res ] )
     endelse
+    print, "Median Residual", med_res
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -529,12 +537,14 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
     wave_range = [ min_lam, max_lam ]  
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; Flux range 
+    indexUse = where(( wave_nan >= min_lam + 200.0 ) AND $ 
+                     ( wave_nan <= max_lam - 200.0 ))
     if keyword_set( include_mask_ori ) then begin 
-        min_flux = min( spec_obs ) < min( spec_syn ) 
-        max_flux = max( spec_obs ) > max( spec_syn )
+        min_flux = min( spec_obs[indexUse], /NaN ) < min( spec_syn, /NaN ) 
+        max_flux = max( spec_obs[indexUse], /NaN ) > max( spec_syn, /NaN )
     endif else begin 
-        min_flux = min( obs_nan ) < min( syn_nan ) 
-        max_flux = max( obs_nan ) > max( syn_nan )
+        min_flux = min( obs_nan[indexUse], /NaN ) < min( syn_nan, /NaN ) 
+        max_flux = max( obs_nan[indexUse], /NaN ) > max( syn_nan, /NaN)
     endelse
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     min_flux = min_flux < spec_syn_norm 
@@ -544,7 +554,8 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
     endif else begin 
         min_flux = ( min_flux - 3.0 * sep_flux )
     endelse
-    flux_range = [ min_flux, ( max_flux + 5.0 * sep_flux ) ]
+    flux_range = [ (min_flux - sep_flux) , ( max_flux + 5.0 * sep_flux ) ]
+    print, "Min/Max Flux", min_flux, max_flux
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -569,6 +580,7 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
         max_res = ( max_res + sep_res ) < 0.299 
         res_inter = ceil( ceil( ( max_res - min_res ) / 0.051 ) / 4.0 ) * 0.05
     endelse
+    print, "Min/Max Residual", min_res, max_res
     res_range  = [ ( min_res - 1.5 * sep_res ), ( max_res + 2.5 * sep_res ) ]
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     
@@ -1123,7 +1135,7 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
     xloc = xmiddle + ( xstep * 0.8 )
     yloc = upper - ( ystep * 10.0 ) 
     label = 'MET_f:   ' + strcompress( $
-        string( sl_struc.am_flux, format='(F7.2)' ), /remove_all ) 
+        string(alog10(sl_struc.am_flux / met_sun), format='(F7.2)' ), /remove_all ) 
     cgText, xloc, yloc, label, charsize=3.0, charthick=9.0, $
         color=cgColor('Black'), alignment=0.0, /normal 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1131,7 +1143,7 @@ pro hs_starlight_plot_out, sl_output, index_list=index_list, $
     xloc = xmiddle + ( xstep * 0.8 )
     yloc = upper - ( ystep * 11.0 ) 
     label = 'MET_m: ' + strcompress( $
-        string( sl_struc.am_mass, format='(F7.2)' ), /remove_all )
+        string(alog10(sl_struc.am_mass / met_sun), format='(F7.2)' ), /remove_all )
     cgText, xloc, yloc, label, charsize=3.0, charthick=9.0, $
         color=cgColor('Black'), alignment=0.0, /normal 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
