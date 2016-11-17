@@ -1,0 +1,18 @@
+3                                                [Number of fits to run]
+/Users/songhuang/work/lib/ssp/miuscat/txt/fwhm251/    [base_dir]
+./                                               [obs_dir]
+./                                               [mask_dir] 
+./                                               [out_dir]
+1855168                                          [your phone number]
+5590                                             [llow_SN]   lower-lambda of S/N window
+5680                                             [lupp_SN]   upper-lambda of S/N window
+3600                                             [Olsyn_ini] lower-lambda for fit
+6050                                             [Olsyn_fin] upper-lambda for fit
+0.8                                              [Odlsyn]    delta-lambda for fit
+1.0                                              [fscale_chi2] fudge-factor for chi2
+FIT                                              [FIT/FXK] Fit or Fix kinematics
+1                                                [IsErrSpecAvailable]  1/0 = Yes/No
+1                                                [IsFlagSpecAvailable] 1/0 = Yes/No
+NGC5286_a_1_sl.txt sl_gc_fast.config mius_kb13.base sl_gc_mask.lis CCM 0.0 5.0 NGC5286_a_1_fB.out
+NGC6522_a_1_sl.txt sl_gc_fast.config mius_kb13.base sl_gc_mask.lis CCM 0.0 5.0 NGC6522_a_1_fB.out
+NGC6528_c_1_sl.txt sl_gc_fast.config mius_kb13.base sl_gc_mask.lis CCM 0.0 5.0 NGC6528_c_1_fB.out
