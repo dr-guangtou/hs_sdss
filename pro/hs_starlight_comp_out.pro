@@ -363,6 +363,9 @@ endif else begin
         xticklen=0.03, yticklen=0.02
 endelse
 
+cgPlot, new_struc[0].wave, new_struc[0].obs, linestyle=0, thick=5.0, $
+    color=cgColor( 'Dark Gray' ), /overplot 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Highlight interesting spectral features 
 if keyword_set( feature_over ) then begin 
@@ -371,9 +374,6 @@ if keyword_set( feature_over ) then begin
 endif
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-cgPlot, new_struc[0].wave, new_struc[0].obs, linestyle=0, thick=5.0, $
-    color=cgColor( 'Dark Gray' ), /overplot 
 for i = 0, ( n_compare - 1 ), 1 do begin 
     if keyword_set( compare_repeat ) then begin 
         cgPlot, new_struc[i].wave, new_struc[i].syn, linestyle=0, thick=2.5, $
