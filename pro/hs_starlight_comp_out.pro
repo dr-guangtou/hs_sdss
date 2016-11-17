@@ -346,13 +346,6 @@ set_plot, 'ps'
 device, filename=plot_compare, font_size=9.0, /encapsulated, $
     /color, set_font='TIMES-ROMAN', /bold, xsize=psxsize, ysize=psysize
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Highlight interesting spectral features 
-if keyword_set( feature_over ) then begin 
-    hs_spec_index_over, index_list, /center_line
-endif
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 ;; Observed and Synthetic spectra
 if keyword_set( ytitle ) then begin 
     cgPlot, new_struc[0].wave, new_struc[0].obs, xstyle=1, ystyle=1, $
@@ -369,6 +362,16 @@ endif else begin
         xtickformat="(A1)", /nodata, xrange=wave_range, yrange=flux_range, $
         xticklen=0.03, yticklen=0.02
 endelse
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Highlight interesting spectral features 
+if keyword_set( feature_over ) then begin 
+    hs_spec_index_over, index_list, /label_over, /no_fill, /no_line, $
+        xstep=30, ystep=10, charsize=2.0
+endif
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 cgPlot, new_struc[0].wave, new_struc[0].obs, linestyle=0, thick=5.0, $
     color=cgColor( 'Dark Gray' ), /overplot 
 for i = 0, ( n_compare - 1 ), 1 do begin 
