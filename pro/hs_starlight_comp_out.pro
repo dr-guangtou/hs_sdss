@@ -108,12 +108,20 @@ if file_test( sl_list[0] ) then begin
             message, ' '
         endif 
 
-        min_flux = min( spec_struc[index_window].spec_obs ) < $
-            min( spec_struc[index_window].spec_syn ) 
-        max_flux = max( spec_struc[index_window].spec_obs ) < $
-            max( spec_struc[index_window].spec_syn ) 
-        min_res  = min( spec_struc[index_window].spec_res ) 
-        max_res  = max( spec_struc[index_window].spec_res ) 
+        spec_use = spec_struc[index_window]
+        mask = spec_struc.pixel_mask 
+        index_good = where((wave > (min_window + 50.0)) AND $ 
+                           (wave < (max_window - 50.0)) AND $
+                           (mask EQ 0))
+
+        min_flux = min( spec_use[index_good].spec_syn, /NaN ) 
+        max_flux = max( spec_use[index_good].spec_syn, /NaN ) 
+        min_res  = min( (spec_use[index_good].spec_res * $
+            spec_use[index_good].spec_wei), /NaN ) 
+        max_res  = max( (spec_use[index_good].spec_res * $
+            spec_use[index_good].spec_wei), /NaN ) 
+        print, sl_list[0]
+        print, min_res, max_res
     endelse 
 endif else begin 
     print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
@@ -191,18 +199,19 @@ for i = 0, ( n_compare - 1 ), 1 do begin
         new_struc[i].err  = err_inter
         new_struc[i].res  = (obs_inter - syn_inter) / err_inter
 
-        index_use = where((new_wave > min(new_wave) + 100.0) AND $ 
-                          (new_wave < max(new_wave) - 100.0))
+        index_use = where((new_wave > (min_window + 100.0)) AND $ 
+                          (new_wave < (max_window - 150.0)) AND $
+                          (mask EQ 0))
 
-        min_flux = min( obs_inter[index_use] ) < min_flux  
         min_flux = min( syn_inter[index_use] ) < min_flux  
-        max_flux = max( obs_inter[index_use] ) > max_flux  
         max_flux = max( syn_inter[index_use] ) > max_flux  
 
         min_res = min( (obs_inter[index_use] - syn_inter[index_use] ) / $
-            err_inter[index_use] ) < min_res 
+            err_inter[index_use], /NaN) < min_res 
         max_res = max( (obs_inter[index_use] - syn_inter[index_use] ) / $
-            err_inter[index_use] ) > max_res 
+            err_inter[index_use], /NaN) > max_res 
+        print, sl_list[i]
+        print, min_res, max_res
 
         index_uniq_age = uniq( base_struc.age, sort( base_struc.age ) ) 
         ssp_age_arr = base_struc[ index_uniq_age ].age
@@ -273,18 +282,29 @@ adev_norm = new_struc.adev / new_struc[0].adev
 adev_plot = ( adev_norm - 0.002 )
 
 wave_range = [ min_window, max_window ]
-flux_sep = ( max_flux - min_flux ) 
-flux_offset = ( ( max_flux - min_flux ) /  7.0 )
+flux_sep = ( max_flux - min_flux )
+flux_offset = ( ( max_flux - min_flux )  / 5.0 )
 if NOT keyword_set( offset ) then begin 
-    flux_range = [ ( min_flux - flux_sep * 0.005 ), $
-        ( max_flux + flux_sep * 0.015 ) ] 
+    if keyword_set( feature_over ) then begin 
+        flux_range = [ ( min_flux - flux_sep * 0.015 ), $
+            ( max_flux + flux_sep * 0.32 ) ] 
+    endif else begin 
+        flux_range = [ ( min_flux - flux_sep * 0.015 ), $
+            ( max_flux + flux_sep * 0.05 ) ] 
+    endelse
 endif else begin 
-    flux_range = [ ( min_flux - ( n_compare - 1 ) * flux_offset ), $
-        ( max_flux + flux_sep * 0.015 ) ] 
+    if keyword_set( feature_over ) then begin 
+        flux_range = [ ( min_flux - ( n_compare - 1 ) * flux_offset ), $
+            ( max_flux + flux_sep * 0.32 ) ] 
+    endif else begin 
+        flux_range = [ ( min_flux - ( n_compare - 1 ) * flux_offset ), $
+            ( max_flux + flux_sep * 0.05 ) ] 
+    endelse
 endelse
 
 res_sep = ( max_res - min_res ) 
-res_range = [ ( min_res - 0.1 ), ( max_res + 0.05 ) ]
+res_range = [ ( min_res - res_sep / 8.0 ), $
+              ( max_res + res_sep / 8.0 ) ]
 
 ;; Name of the figure 
 temp = strsplit( list, '.', /extract ) 
@@ -363,17 +383,16 @@ endif else begin
         xticklen=0.03, yticklen=0.02
 endelse
 
-cgPlot, new_struc[0].wave, new_struc[0].obs, linestyle=0, thick=5.0, $
-    color=cgColor( 'Dark Gray' ), /overplot 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Highlight interesting spectral features 
 if keyword_set( feature_over ) then begin 
     hs_spec_index_over, index_list, /center_line
-    hs_spec_index_over, index_list, /label_over, /no_fill, /no_line, $
-        xstep=35, ystep=30, charsize=1.5
 endif
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+cgPlot, new_struc[0].wave, new_struc[0].obs, linestyle=0, thick=5.0, $
+    color=cgColor( 'Dark Gray' ), /overplot 
+
 
 for i = 0, ( n_compare - 1 ), 1 do begin 
     if keyword_set( compare_repeat ) then begin 
@@ -394,6 +413,14 @@ for i = 0, ( n_compare - 1 ), 1 do begin
         endif 
     endelse
 endfor 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Highlight interesting spectral features 
+if keyword_set( feature_over ) then begin 
+    hs_spec_index_over, index_list, /label_over, /no_fill, /no_line, $
+        xstep=35, ystep=30, charsize=1.5
+endif
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 if keyword_set( text_over ) then begin 
     if keyword_set( text_0 ) then begin 
