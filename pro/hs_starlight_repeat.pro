@@ -20,7 +20,8 @@
 ;------------------------------------------------------------------------------
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-pro hs_starlight_repeat, sl_input, n_repeat, is_error=is_error
+pro hs_starlight_repeat, sl_input, n_repeat, is_error=is_error, $
+    loc_input=loc_input, random=random
 
     n_repeat = long( n_repeat )
     n_string = strcompress( string( n_repeat ), /remove_all ) 
@@ -51,6 +52,15 @@ pro hs_starlight_repeat, sl_input, n_repeat, is_error=is_error
         close, 10 
     endelse
 
+    if keyword_set(loc_input) then begin 
+        if strmid(loc_input, strlen(loc_input)-1, strlen(loc_input)) NE '/' then begin 
+            loc_input = loc_input + '/'
+        endif 
+    endif else begin 
+        temp = strsplit( input_arr[2], ' ', /extract )
+        loc_input = temp[0]
+    endelse
+
     ;; Lines for number of runs 
     input_arr[0] = n_string + '                         [Number of fits to run]' 
 
@@ -77,7 +87,8 @@ pro hs_starlight_repeat, sl_input, n_repeat, is_error=is_error
     endelse
 
     ;; Adjust the input spectra 
-    if NOT file_test( input_spec ) then begin 
+    input_s
+    if NOT file_test( loc_input + input_spec ) then begin 
         print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX' 
         print, ' Can not find the input spectrum : ' + input_spec 
         print, 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX' 
